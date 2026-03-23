@@ -3,13 +3,17 @@
   "title": "Rotini CLI Spec Schema",
   "description": "Combined schema for a Rotini CLI spec file (.rotini.json)",
   "type": "object",
-  "required": ["$schema", "definition", "configuration"],
+  "required": [
+    "$schema",
+    "definition",
+    "configuration"
+  ],
   "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
       "description": "URL identifying the rotini schema version. The version segment must match the installed rotini binary version.",
-      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/config/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
+      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/go-rotini/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
     },
     "definition": {
       "$ref": "#/definitions/Definition"
@@ -20,53 +24,7 @@
   },
   "definitions": {
     "Definition": {
-      "type": "object",
-      "required": ["name"],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Binary name for the CLI"
-        },
-        "short_description": {
-          "type": "string",
-          "description": "Short description of the CLI shown in root help output"
-        },
-        "long_description": {
-          "type": "string",
-          "description": "Long description of the CLI shown in root help output"
-        },
-        "examples": {
-          "type": "string",
-          "description": "Example usage text shown in root help output"
-        },
-        "components": {
-          "$ref": "#/definitions/Components"
-        },
-        "parameters": {
-          "type": "array",
-          "description": "Root-level parameters (flags and arguments)",
-          "items": {
-            "$ref": "#/definitions/Parameter"
-          }
-        },
-        "commands": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Command"
-          }
-        },
-        "constraints": {
-          "$ref": "#/definitions/Constraints"
-        },
-        "configs": {
-          "type": "array",
-          "description": "Config files to load at startup",
-          "items": {
-            "$ref": "#/definitions/ConfigSpec"
-          }
-        }
-      }
+      "$ref": "#/definitions/Command"
     },
     "Components": {
       "type": "object",
@@ -77,24 +35,14 @@
           "additionalProperties": {
             "$ref": "#/definitions/Schema"
           }
-        },
-        "inputs": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/Parameter"
-          }
-        },
-        "outputs": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/Response"
-          }
         }
       }
     },
     "Command": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -136,30 +84,32 @@
           "type": "string",
           "description": "Message shown when this command is used (deprecated only)"
         },
-        "parameters": {
-          "type": "array",
-          "description": "Parameters for this command (flags, arguments, env, config, stdin)",
-          "items": {
-            "$ref": "#/definitions/Parameter"
-          }
+        "inputs": {
+          "$ref": "#/definitions/Inputs",
+          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
         },
         "constraints": {
           "$ref": "#/definitions/Constraints"
         },
-        "responses": {
+        "outputs": {
           "type": "object",
-          "description": "Named response definitions for the command's Run handler",
+          "description": "Named output definitions for the command's Run handler",
           "additionalProperties": {
             "$ref": "#/definitions/Response"
           }
         },
         "output": {
           "$ref": "#/definitions/OutputSpec",
-          "description": "Default output format and stream for this command's responses"
+          "description": "Default output format and stream for this command's outputs"
         },
         "builtin": {
           "type": "string",
-          "enum": ["help", "completions", "docs", "version"],
+          "enum": [
+            "help",
+            "completions",
+            "docs",
+            "version"
+          ],
           "description": "Opt-in built-in handler behavior. When set, generates a pre-written handler implementation instead of an empty stub."
         },
         "commands": {
@@ -167,38 +117,127 @@
           "items": {
             "$ref": "#/definitions/Command"
           }
+        },
+        "components": {
+          "$ref": "#/definitions/Components",
+          "description": "Reusable schema definitions. Only meaningful at the root level."
+        },
+        "configuration_files": {
+          "type": "array",
+          "description": "Config files to load at startup. Only meaningful at the root level.",
+          "items": {
+            "$ref": "#/definitions/ConfigSpec"
+          }
+        },
+        "external_binaries": {
+          "type": "array",
+          "description": "External CLI binaries the framework can dispatch to. Only meaningful at the root level.",
+          "items": {
+            "$ref": "#/definitions/ExternalBinary"
+          }
+        },
+        "command_groups": {
+          "type": "array",
+          "description": "Named groups for organising commands in help output. Only meaningful at the root level.",
+          "items": {
+            "$ref": "#/definitions/CommandGroup"
+          }
+        },
+        "validation": {
+          "$ref": "#/definitions/ValidationSpec",
+          "description": "Validation behaviour configuration. Only meaningful at the root level."
+        },
+        "plugins": {
+          "$ref": "#/definitions/PluginsSpec",
+          "description": "Plugin discovery configuration. Only meaningful at the root level."
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Command execution timeout in milliseconds. Zero means no timeout."
+        },
+        "passthrough": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, tokens after '--' are collected as passthrough arguments"
+        },
+        "stdin": {
+          "$ref": "#/definitions/StdinSpec",
+          "description": "Declares expected stdin format and schema for this command"
+        },
+        "group": {
+          "type": "string",
+          "description": "Group label matching a command_groups entry. Controls help output grouping."
+        },
+        "persistent_pre_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, PreRun is also called for all descendant commands"
         }
       }
     },
-    "Parameter": {
+    "Inputs": {
       "type": "object",
-      "required": ["name"],
       "additionalProperties": false,
-      "if": {
-        "properties": { "in": { "const": "flag" } },
-        "required": ["in"]
-      },
-      "then": {
-        "if": {
-          "not": {
-            "properties": { "action": { "const": true } },
-            "required": ["action"]
+      "properties": {
+        "flags": {
+          "type": "array",
+          "description": "Flag inputs for this command",
+          "items": {
+            "$ref": "#/definitions/FlagInput"
           }
         },
-        "then": {
-          "properties": { "responses": false }
+        "arguments": {
+          "type": "array",
+          "description": "Positional argument inputs for this command",
+          "items": {
+            "$ref": "#/definitions/ArgumentInput"
+          }
+        },
+        "configuration_files": {
+          "type": "array",
+          "description": "Config file value inputs for this command",
+          "items": {
+            "$ref": "#/definitions/ConfigInput"
+          }
+        },
+        "env": {
+          "type": "array",
+          "description": "Environment variable inputs for this command",
+          "items": {
+            "$ref": "#/definitions/EnvInput"
+          }
+        }
+      }
+    },
+    "FlagInput": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "not": {
+          "properties": {
+            "action": {
+              "const": true
+            }
+          },
+          "required": [
+            "action"
+          ]
+        }
+      },
+      "then": {
+        "properties": {
+          "outputs": false
         }
       },
       "properties": {
         "name": {
           "type": "string",
           "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-          "description": "Logical name for the parameter"
-        },
-        "in": {
-          "type": "string",
-          "enum": ["flag", "argument", "env", "config", "stdin"],
-          "description": "Source type for this parameter"
+          "description": "Logical name for the flag"
         },
         "description": {
           "type": "string",
@@ -214,7 +253,7 @@
         },
         "deprecated_message": {
           "type": "string",
-          "description": "Message shown when this parameter is used (deprecated only)"
+          "description": "Message shown when this flag is used (deprecated only)"
         },
         "sensitive": {
           "type": "boolean",
@@ -226,16 +265,16 @@
         },
         "default": {
           "type": "string",
-          "description": "Default value when parameter is not provided"
+          "description": "Default value when the flag is not provided"
         },
         "completions": {
           "type": "boolean",
           "default": false,
-          "description": "Enable dynamic completion callback for this parameter"
+          "description": "Enable dynamic completion callback for this flag"
         },
         "identifiers": {
           "type": "array",
-          "description": "CLI flag identifiers (e.g., '--force', '-f'). Only valid when in == 'flag'.",
+          "description": "CLI flag identifiers (e.g., '--force', '-f')",
           "minItems": 1,
           "items": {
             "type": "string",
@@ -245,60 +284,193 @@
         "action": {
           "type": "boolean",
           "default": false,
-          "description": "When true, the flag is an action flag (verb role): it triggers an operation and may define a typed response. When false (default), the flag is a modifier flag (adjective role). Only valid when in == 'flag'."
+          "description": "When true, the flag is an action flag: it triggers an operation and may define typed outputs. When false (default), the flag is a modifier flag."
         },
         "hidden": {
           "type": "boolean",
           "default": false,
-          "description": "When true, the flag is hidden from help output. Only valid when in == 'flag'."
+          "description": "When true, the flag is hidden from help output"
         },
         "persistent": {
           "type": "boolean",
           "default": false,
-          "description": "When true, the flag propagates to all subcommands. Only valid when in == 'flag'."
+          "description": "When true, the flag propagates to all subcommands"
         },
         "count": {
           "type": "boolean",
           "default": false,
-          "description": "When true, counts flag repetitions as an integer value (e.g., -vvv = 3). Only valid when in == 'flag' and schema.type == 'int'."
+          "description": "When true, counts flag repetitions as an integer value (e.g., -vvv = 3). Requires schema.type == 'int'."
         },
         "placeholder": {
           "type": "string",
-          "description": "Custom placeholder shown in help usage lines. Only valid when in == 'flag'."
+          "description": "Custom placeholder shown in help usage lines"
         },
-        "responses": {
+        "negation": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, generates a paired --no-<name> boolean flag"
+        },
+        "env": {
+          "type": "string",
+          "description": "Fallback environment variable name (checked when flag is not provided)",
+          "pattern": "^[A-Z_][A-Z0-9_]*$"
+        },
+        "outputs": {
           "type": "object",
-          "description": "Named response definitions for action flags. Only valid when in == 'flag' and action == true.",
+          "description": "Named output definitions for action flags. Only valid when action == true.",
           "additionalProperties": {
             "$ref": "#/definitions/Response"
           }
+        }
+      }
+    },
+    "ArgumentInput": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Logical name for the argument"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description shown in help output"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "deprecated": {
+          "type": "boolean",
+          "default": false
+        },
+        "deprecated_message": {
+          "type": "string"
+        },
+        "sensitive": {
+          "type": "boolean",
+          "default": false
+        },
+        "schema": {
+          "$ref": "#/definitions/Schema"
+        },
+        "default": {
+          "type": "string"
+        },
+        "completions": {
+          "type": "boolean",
+          "default": false
         },
         "variadic": {
           "type": "boolean",
           "default": false,
-          "description": "When true, collects all remaining positional values. Only valid when in == 'argument'."
+          "description": "When true, collects all remaining positional values"
         },
         "stdin_dash": {
           "type": "boolean",
           "default": false,
-          "description": "When true, '-' as the argument value reads from stdin. Only valid when in == 'argument'."
-        },
-        "env": {
-          "type": "string",
-          "description": "Environment variable name. Required when in == 'env'; also usable as fallback for flags and arguments.",
-          "pattern": "^[A-Z_][A-Z0-9_]*$"
-        },
-        "file": {
-          "type": "string",
-          "description": "Config file path. Only valid when in == 'config'."
-        },
-        "key": {
-          "type": "string",
-          "description": "Config file key path. Only valid when in == 'config'."
+          "description": "When true, '-' as the argument value reads from stdin"
         },
         "format": {
           "type": "string",
-          "description": "Input format (e.g., 'json', 'text'). Applicable to stdin and stdin_dash argument sources."
+          "description": "Input format for stdin_dash reads (e.g., 'json', 'text')"
+        },
+        "env": {
+          "type": "string",
+          "description": "Fallback environment variable name (checked when argument is not provided)",
+          "pattern": "^[A-Z_][A-Z0-9_]*$"
+        }
+      }
+    },
+    "ConfigInput": {
+      "type": "object",
+      "required": [
+        "name",
+        "file",
+        "key"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Logical name for this config value"
+        },
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "schema": {
+          "$ref": "#/definitions/Schema"
+        },
+        "default": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string",
+          "description": "Config file path"
+        },
+        "key": {
+          "type": "string",
+          "description": "Key path within the config file (e.g., 'server.port')"
+        }
+      }
+    },
+    "EnvInput": {
+      "type": "object",
+      "required": [
+        "name",
+        "env"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Logical name for this env var input"
+        },
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "schema": {
+          "$ref": "#/definitions/Schema"
+        },
+        "default": {
+          "type": "string"
+        },
+        "env": {
+          "type": "string",
+          "description": "Environment variable name",
+          "pattern": "^[A-Z_][A-Z0-9_]*$"
+        }
+      }
+    },
+    "StdinSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "Expected stdin format: 'json', 'text', 'csv'"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, error if stdin is empty"
+        },
+        "schema": {
+          "$ref": "#/definitions/Schema"
         }
       }
     },
@@ -308,28 +480,28 @@
       "properties": {
         "oneOf": {
           "type": "array",
-          "description": "Exactly one group of named parameters must be provided (mutually exclusive)",
+          "description": "Exactly one group of named inputs must be provided (mutually exclusive)",
           "items": {
             "$ref": "#/definitions/ConstraintGroup"
           }
         },
         "allOf": {
           "type": "array",
-          "description": "All named parameters in each group must be provided together",
+          "description": "All named inputs in each group must be provided together",
           "items": {
             "$ref": "#/definitions/ConstraintGroup"
           }
         },
         "anyOf": {
           "type": "array",
-          "description": "At least one group of named parameters must satisfy the constraint",
+          "description": "At least one group of named inputs must satisfy the constraint",
           "items": {
             "$ref": "#/definitions/ConstraintGroup"
           }
         },
         "not": {
           "type": "array",
-          "description": "None of the named parameters in each group may be provided together",
+          "description": "None of the named inputs in each group may be provided together",
           "items": {
             "$ref": "#/definitions/ConstraintGroup"
           }
@@ -344,27 +516,66 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "header": { "type": "string", "description": "Column header label" },
-        "width": { "type": "integer", "minimum": 1, "description": "Minimum column width in characters" },
-        "omit": { "type": "boolean", "default": false, "description": "When true, exclude this field from table output" }
+        "header": {
+          "type": "string",
+          "description": "Column header label"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum column width in characters"
+        },
+        "omit": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, exclude this field from table output"
+        }
       }
     },
     "OutputSpec": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "format": { "type": "string", "enum": ["json", "table", "text"], "default": "text", "description": "Default output format for all responses" },
-        "stream": { "type": "string", "enum": ["stdout", "stderr"], "default": "stdout", "description": "Default output stream for all responses" }
+        "format": {
+          "type": "string",
+          "enum": [
+            "json",
+            "table",
+            "text"
+          ],
+          "default": "text",
+          "description": "Default output format for all outputs"
+        },
+        "stream": {
+          "type": "string",
+          "enum": [
+            "stdout",
+            "stderr"
+          ],
+          "default": "stdout",
+          "description": "Default output stream for all outputs"
+        }
       }
     },
     "Condition": {
       "type": "object",
-      "required": ["param"],
+      "required": [
+        "param"
+      ],
       "additionalProperties": false,
       "properties": {
-        "param": { "type": "string", "description": "Name of the parameter to check" },
-        "equals": { "type": "string", "description": "Condition is true when the parameter's value equals this string" },
-        "present": { "type": "boolean", "description": "Condition is true when the parameter was explicitly provided" }
+        "param": {
+          "type": "string",
+          "description": "Name of the input to check"
+        },
+        "equals": {
+          "type": "string",
+          "description": "Condition is true when the input's value equals this string"
+        },
+        "present": {
+          "type": "boolean",
+          "description": "Condition is true when the input was explicitly provided"
+        }
       }
     },
     "ConstraintGroup": {
@@ -374,7 +585,9 @@
         "when": {
           "type": "array",
           "description": "All conditions must be true for this group to activate (allOf semantics). When absent, the group is unconditional.",
-          "items": { "$ref": "#/definitions/Condition" }
+          "items": {
+            "$ref": "#/definitions/Condition"
+          }
         },
         "required": {
           "type": "array",
@@ -411,36 +624,47 @@
       "additionalProperties": false,
       "if": {
         "not": {
-          "required": ["$ref"]
+          "required": [
+            "$ref"
+          ]
         }
       },
       "then": {
-        "required": ["exit_code"]
+        "required": [
+          "exit_code"
+        ]
       },
       "properties": {
         "$ref": {
           "type": "string",
-          "description": "Reference to a component response definition (e.g. '#/definition/components/outputs/MyResponse'). Resolved at codegen time — the referenced output is inlined before code generation."
+          "description": "Reference to a component schema definition. Resolved at codegen time."
         },
         "exit_code": {
           "type": "integer",
-          "description": "Exit code for this response (0 for success, non-zero for error/warning)"
+          "description": "Exit code for this output (0 for success, non-zero for error/warning)"
         },
         "description": {
           "type": "string",
-          "description": "Human-readable description of this response"
+          "description": "Human-readable description of this output"
         },
         "schema": {
           "$ref": "#/definitions/Schema"
         },
         "format": {
           "type": "string",
-          "enum": ["json", "table", "text"],
+          "enum": [
+            "json",
+            "table",
+            "text"
+          ],
           "description": "Overrides command-level output format for this response only"
         },
         "stream": {
           "type": "string",
-          "enum": ["stdout", "stderr"],
+          "enum": [
+            "stdout",
+            "stderr"
+          ],
           "description": "Overrides command-level output stream for this response only"
         }
       }
@@ -566,7 +790,10 @@
     },
     "ConfigSpec": {
       "type": "object",
-      "required": ["name", "path"],
+      "required": [
+        "name",
+        "path"
+      ],
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -579,7 +806,11 @@
         },
         "format": {
           "type": "string",
-          "enum": ["json", "yaml", "toml"],
+          "enum": [
+            "json",
+            "yaml",
+            "toml"
+          ],
           "default": "json",
           "description": "Config file format"
         },
@@ -587,6 +818,76 @@
           "type": "boolean",
           "default": true,
           "description": "When false, disables file watching for this config. Default true."
+        }
+      }
+    },
+    "ExternalBinary": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Binary name as it appears in $PATH"
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description shown in help output"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, startup fails if the binary is not found in $PATH"
+        },
+        "min_version": {
+          "type": "string",
+          "description": "Minimum required semver version (e.g. '1.2.0')"
+        },
+        "version_flag": {
+          "type": "string",
+          "description": "Flag used to retrieve the binary version (e.g. '--version')"
+        }
+      }
+    },
+    "CommandGroup": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Group label matching the 'group' field on commands"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description shown next to the group header in help output"
+        }
+      }
+    },
+    "ValidationSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "behavior": {
+          "type": "string",
+          "enum": ["fail_fast", "fail_collect"],
+          "default": "fail_fast",
+          "description": "fail_fast stops at the first validation error (default); fail_collect gathers all errors before returning"
+        }
+      }
+    },
+    "PluginsSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path_discovery": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, scan $PATH for <program>-<command> binaries at startup"
         }
       }
     },
@@ -610,7 +911,7 @@
         },
         "imports": {
           "type": "array",
-          "description": "List of Go import paths to include in generated code. Each entry is a package path (e.g., 'net/url') or an aliased import (e.g., 'myalias net/url').",
+          "description": "List of Go import paths to include in generated code as a convenience if types from external packages are desired in input or output types. Each entry is a package path (e.g., 'net/url') or an aliased import (e.g., 'myalias net/url').",
           "items": {
             "type": "string"
           }
