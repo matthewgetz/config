@@ -65,8 +65,9 @@
           "default": false
         },
         "deprecated": {
-          "type": "string",
-          "description": "When set, marks the command as deprecated and uses the value as the warning message shown on use"
+          "type": "boolean",
+          "default": false,
+          "description": "When true, marks the definition as deprecated. Handlers can check .Deprecated to emit their own warnings."
         },
         "inputs": {
           "$ref": "#/definitions/Inputs",
@@ -117,7 +118,7 @@
             "$ref": "#/definitions/RemoteCommandSpec"
           }
         },
-        "default_timeout": {
+        "timeout": {
           "type": "integer",
           "minimum": 0,
           "description": "Default command execution timeout in milliseconds applied to all commands. Zero means no timeout."
@@ -166,8 +167,9 @@
           "default": false
         },
         "deprecated": {
-          "type": "string",
-          "description": "When set, marks the command as deprecated and uses the value as the warning message shown on use"
+          "type": "boolean",
+          "default": false,
+          "description": "When true, marks the command as deprecated. Handlers can check .Deprecated to emit their own warnings."
         },
         "inputs": {
           "$ref": "#/definitions/Inputs",
@@ -256,8 +258,9 @@
           "default": false
         },
         "deprecated": {
-          "type": "string",
-          "description": "When set, marks the flag as deprecated and uses the value as the warning message shown on use"
+          "type": "boolean",
+          "default": false,
+          "description": "When true, marks the flag as deprecated. Handlers can check .Deprecated to emit their own warnings."
         },
         "schema": {
           "$ref": "#/definitions/Schema"
@@ -290,11 +293,6 @@
         "example": {
           "type": "string",
           "description": "Example value shown in help output"
-        },
-        "completions": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, generates a dynamic shell completion callback method for this flag"
         }
       }
     },
@@ -319,8 +317,9 @@
           "default": false
         },
         "deprecated": {
-          "type": "string",
-          "description": "When set, marks the argument as deprecated and uses the value as the warning message shown on use"
+          "type": "boolean",
+          "default": false,
+          "description": "When true, marks the argument as deprecated. Handlers can check .Deprecated to emit their own warnings."
         },
         "schema": {
           "$ref": "#/definitions/Schema"
@@ -335,11 +334,6 @@
         "example": {
           "type": "string",
           "description": "Example value shown in help output"
-        },
-        "completions": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, generates a dynamic shell completion callback method for this argument"
         }
       }
     },
@@ -410,11 +404,6 @@
           "type": "string",
           "description": "Environment variable name",
           "pattern": "^[A-Z_][A-Z0-9_]*$"
-        },
-        "completions": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, generates a dynamic shell completion callback method for this env var"
         }
       }
     },
@@ -638,21 +627,6 @@
           "type": "string",
           "description": "File path (supports ~ for home dir)"
         },
-        "format": {
-          "type": "string",
-          "enum": [
-            "json",
-            "yaml",
-            "toml"
-          ],
-          "default": "json",
-          "description": "Config file format"
-        },
-        "priority": {
-          "type": "integer",
-          "default": 0,
-          "description": "Config file load priority. Lower values are loaded first. Default 0."
-        },
         "schema": {
           "$ref": "#/definitions/Schema",
           "description": "When set, generates a typed config struct and validates required fields at load time."
@@ -718,8 +692,9 @@
           "description": "When true, the remote command is excluded from help output."
         },
         "deprecated": {
-          "type": "string",
-          "description": "When set, marks the remote command as deprecated and uses the value as the warning message shown on invocation."
+          "type": "boolean",
+          "default": false,
+          "description": "When true, marks the remote command as deprecated. Handlers can check .Deprecated to emit their own warnings."
         },
         "group": {
           "type": "string",
