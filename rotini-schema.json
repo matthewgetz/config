@@ -13,7 +13,7 @@
     "$schema": {
       "type": "string",
       "description": "URL identifying the rotini schema version. The version segment must match the installed rotini binary version.",
-      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/config/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
+      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/go-rotini/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
     },
     "definition": {
       "$ref": "#/definitions/Definition"
@@ -24,17 +24,103 @@
   },
   "definitions": {
     "Definition": {
-      "$ref": "#/definitions/Command"
-    },
-    "Components": {
       "type": "object",
+      "required": [
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+        },
+        "short_description": {
+          "type": "string",
+          "description": "One-line description shown in parent help output"
+        },
+        "long_description": {
+          "type": "string",
+          "description": "Detailed description shown in per-command help output"
+        },
+        "examples": {
+          "type": "array",
+          "description": "Example usage lines shown in root help output",
+          "items": {
+            "type": "string"
+          }
+        },
+        "usage": {
+          "type": "string",
+          "description": "Custom usage string shown instead of auto-generated usage line"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          }
+        },
+        "hidden": {
+          "type": "boolean",
+          "default": false
+        },
+        "deprecated": {
+          "type": "string",
+          "description": "When set, marks the command as deprecated and uses the value as the warning message shown on use"
+        },
+        "inputs": {
+          "$ref": "#/definitions/Inputs",
+          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
+        },
+        "constraints": {
+          "$ref": "#/definitions/Constraints"
+        },
+        "output": {
+          "$ref": "#/definitions/OutputSpec",
+          "description": "Declares the typed output shape for this command's Run handler. Generates a Result struct with the declared fields."
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Command"
+          }
+        },
         "schemas": {
           "type": "object",
+          "description": "Reusable schema definitions. Referenced elsewhere via $ref.",
           "additionalProperties": {
             "$ref": "#/definitions/Schema"
           }
+        },
+        "configuration_files": {
+          "type": "array",
+          "description": "Config files to load at startup.",
+          "items": {
+            "$ref": "#/definitions/ConfigSpec"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "Named groups for organising commands in help output.",
+          "items": {
+            "$ref": "#/definitions/CommandGroup"
+          }
+        },
+        "validation": {
+          "$ref": "#/definitions/ValidationSpec",
+          "description": "Validation behaviour configuration."
+        },
+        "remote_commands": {
+          "type": "array",
+          "description": "Explicit list of co-located remote binaries dispatched as first-class commands.",
+          "items": {
+            "$ref": "#/definitions/RemoteCommandSpec"
+          }
+        },
+        "default_timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Default command execution timeout in milliseconds applied to all commands. Zero means no timeout."
         }
       }
     },
@@ -58,8 +144,11 @@
           "description": "Detailed description shown in per-command help output"
         },
         "examples": {
-          "type": "string",
-          "description": "Example usage text shown in per-command help output"
+          "type": "array",
+          "description": "Example usage lines shown in per-command help output",
+          "items": {
+            "type": "string"
+          }
         },
         "usage": {
           "type": "string",
@@ -77,12 +166,8 @@
           "default": false
         },
         "deprecated": {
-          "type": "boolean",
-          "default": false
-        },
-        "deprecated_message": {
           "type": "string",
-          "description": "Message shown when this command is used (deprecated only)"
+          "description": "When set, marks the command as deprecated and uses the value as the warning message shown on use"
         },
         "inputs": {
           "$ref": "#/definitions/Inputs",
@@ -91,26 +176,9 @@
         "constraints": {
           "$ref": "#/definitions/Constraints"
         },
-        "outputs": {
-          "type": "object",
-          "description": "Named output definitions for the command's Run handler",
-          "additionalProperties": {
-            "$ref": "#/definitions/Response"
-          }
-        },
         "output": {
           "$ref": "#/definitions/OutputSpec",
-          "description": "Default output format and stream for this command's outputs"
-        },
-        "builtin": {
-          "type": "string",
-          "enum": [
-            "help",
-            "completions",
-            "docs",
-            "version"
-          ],
-          "description": "Opt-in built-in handler behavior. When set, generates a pre-written handler implementation instead of an empty stub."
+          "description": "Declares the typed output shape for this command's Run handler. Generates a Result struct with the declared fields."
         },
         "commands": {
           "type": "array",
@@ -118,61 +186,14 @@
             "$ref": "#/definitions/Command"
           }
         },
-        "components": {
-          "$ref": "#/definitions/Components",
-          "description": "Reusable schema definitions. Only meaningful at the root level."
-        },
-        "configuration_files": {
-          "type": "array",
-          "description": "Config files to load at startup. Only meaningful at the root level.",
-          "items": {
-            "$ref": "#/definitions/ConfigSpec"
-          }
-        },
-        "external_binaries": {
-          "type": "array",
-          "description": "External CLI binaries the framework can dispatch to. Only meaningful at the root level.",
-          "items": {
-            "$ref": "#/definitions/ExternalBinary"
-          }
-        },
-        "command_groups": {
-          "type": "array",
-          "description": "Named groups for organising commands in help output. Only meaningful at the root level.",
-          "items": {
-            "$ref": "#/definitions/CommandGroup"
-          }
-        },
-        "validation": {
-          "$ref": "#/definitions/ValidationSpec",
-          "description": "Validation behaviour configuration. Only meaningful at the root level."
-        },
-        "plugins": {
-          "$ref": "#/definitions/PluginsSpec",
-          "description": "Plugin discovery configuration. Only meaningful at the root level."
-        },
         "timeout": {
           "type": "integer",
           "minimum": 0,
           "description": "Command execution timeout in milliseconds. Zero means no timeout."
         },
-        "passthrough": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, tokens after '--' are collected as passthrough arguments"
-        },
-        "stdin": {
-          "$ref": "#/definitions/StdinSpec",
-          "description": "Declares expected stdin format and schema for this command"
-        },
         "group": {
           "type": "string",
-          "description": "Group label matching a command_groups entry. Controls help output grouping."
-        },
-        "persistent_pre_run": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, PreRun is also called for all descendant commands"
+          "description": "Group label matching a groups entry. Controls help output grouping."
         }
       }
     },
@@ -194,19 +215,23 @@
             "$ref": "#/definitions/ArgumentInput"
           }
         },
-        "configuration_files": {
+        "config_values": {
           "type": "array",
           "description": "Config file value inputs for this command",
           "items": {
             "$ref": "#/definitions/ConfigInput"
           }
         },
-        "env": {
+        "environment": {
           "type": "array",
           "description": "Environment variable inputs for this command",
           "items": {
             "$ref": "#/definitions/EnvInput"
           }
+        },
+        "stdin": {
+          "$ref": "#/definitions/StdinSpec",
+          "description": "Declares expected stdin format and schema for this command"
         }
       }
     },
@@ -216,23 +241,6 @@
         "name"
       ],
       "additionalProperties": false,
-      "if": {
-        "not": {
-          "properties": {
-            "action": {
-              "const": true
-            }
-          },
-          "required": [
-            "action"
-          ]
-        }
-      },
-      "then": {
-        "properties": {
-          "outputs": false
-        }
-      },
       "properties": {
         "name": {
           "type": "string",
@@ -248,79 +256,45 @@
           "default": false
         },
         "deprecated": {
-          "type": "boolean",
-          "default": false
-        },
-        "deprecated_message": {
           "type": "string",
-          "description": "Message shown when this flag is used (deprecated only)"
-        },
-        "sensitive": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, value is treated as sensitive (not logged)"
+          "description": "When set, marks the flag as deprecated and uses the value as the warning message shown on use"
         },
         "schema": {
           "$ref": "#/definitions/Schema"
         },
         "default": {
-          "type": "string",
           "description": "Default value when the flag is not provided"
-        },
-        "completions": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable dynamic completion callback for this flag"
         },
         "identifiers": {
           "type": "array",
-          "description": "CLI flag identifiers (e.g., '--force', '-f')",
+          "description": "CLI flag identifiers (e.g., '--force', '-f'). When absent, '--<name>' is auto-derived.",
           "minItems": 1,
           "items": {
             "type": "string",
             "pattern": "^-{1,2}[a-zA-Z][a-zA-Z0-9_-]*$"
           }
         },
-        "action": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, the flag is an action flag: it triggers an operation and may define typed outputs. When false (default), the flag is a modifier flag."
-        },
         "hidden": {
           "type": "boolean",
           "default": false,
           "description": "When true, the flag is hidden from help output"
         },
-        "persistent": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, the flag propagates to all subcommands"
-        },
-        "count": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, counts flag repetitions as an integer value (e.g., -vvv = 3). Requires schema.type == 'int'."
-        },
         "placeholder": {
           "type": "string",
           "description": "Custom placeholder shown in help usage lines"
         },
-        "negation": {
+        "group": {
+          "type": "string",
+          "description": "Group label for help output"
+        },
+        "example": {
+          "type": "string",
+          "description": "Example value shown in help output"
+        },
+        "completions": {
           "type": "boolean",
           "default": false,
-          "description": "When true, generates a paired --no-<name> boolean flag"
-        },
-        "env": {
-          "type": "string",
-          "description": "Fallback environment variable name (checked when flag is not provided)",
-          "pattern": "^[A-Z_][A-Z0-9_]*$"
-        },
-        "outputs": {
-          "type": "object",
-          "description": "Named output definitions for action flags. Only valid when action == true.",
-          "additionalProperties": {
-            "$ref": "#/definitions/Response"
-          }
+          "description": "When true, generates a dynamic shell completion callback method for this flag"
         }
       }
     },
@@ -345,44 +319,27 @@
           "default": false
         },
         "deprecated": {
-          "type": "boolean",
-          "default": false
-        },
-        "deprecated_message": {
-          "type": "string"
-        },
-        "sensitive": {
-          "type": "boolean",
-          "default": false
+          "type": "string",
+          "description": "When set, marks the argument as deprecated and uses the value as the warning message shown on use"
         },
         "schema": {
           "$ref": "#/definitions/Schema"
         },
         "default": {
-          "type": "string"
+          "description": "Default value when the argument is not provided"
+        },
+        "group": {
+          "type": "string",
+          "description": "Group label for help output"
+        },
+        "example": {
+          "type": "string",
+          "description": "Example value shown in help output"
         },
         "completions": {
           "type": "boolean",
-          "default": false
-        },
-        "variadic": {
-          "type": "boolean",
           "default": false,
-          "description": "When true, collects all remaining positional values"
-        },
-        "stdin_dash": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, '-' as the argument value reads from stdin"
-        },
-        "format": {
-          "type": "string",
-          "description": "Input format for stdin_dash reads (e.g., 'json', 'text')"
-        },
-        "env": {
-          "type": "string",
-          "description": "Fallback environment variable name (checked when argument is not provided)",
-          "pattern": "^[A-Z_][A-Z0-9_]*$"
+          "description": "When true, generates a dynamic shell completion callback method for this argument"
         }
       }
     },
@@ -411,7 +368,7 @@
           "$ref": "#/definitions/Schema"
         },
         "default": {
-          "type": "string"
+          "description": "Default value when the config key is absent"
         },
         "file": {
           "type": "string",
@@ -427,7 +384,7 @@
       "type": "object",
       "required": [
         "name",
-        "env"
+        "variable"
       ],
       "additionalProperties": false,
       "properties": {
@@ -447,12 +404,17 @@
           "$ref": "#/definitions/Schema"
         },
         "default": {
-          "type": "string"
+          "description": "Default value when the env var is absent"
         },
-        "env": {
+        "variable": {
           "type": "string",
           "description": "Environment variable name",
           "pattern": "^[A-Z_][A-Z0-9_]*$"
+        },
+        "completions": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, generates a dynamic shell completion callback method for this env var"
         }
       }
     },
@@ -460,10 +422,6 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "format": {
-          "type": "string",
-          "description": "Expected stdin format: 'json', 'text', 'csv'"
-        },
         "required": {
           "type": "boolean",
           "default": false,
@@ -478,28 +436,28 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "oneOf": {
+        "requires_exactly_one": {
           "type": "array",
           "description": "Exactly one group of named inputs must be provided (mutually exclusive)",
           "items": {
             "$ref": "#/definitions/ConstraintGroup"
           }
         },
-        "allOf": {
+        "requires_all": {
           "type": "array",
           "description": "All named inputs in each group must be provided together",
           "items": {
             "$ref": "#/definitions/ConstraintGroup"
           }
         },
-        "anyOf": {
+        "requires_any": {
           "type": "array",
           "description": "At least one group of named inputs must satisfy the constraint",
           "items": {
             "$ref": "#/definitions/ConstraintGroup"
           }
         },
-        "not": {
+        "forbids": {
           "type": "array",
           "description": "None of the named inputs in each group may be provided together",
           "items": {
@@ -509,51 +467,6 @@
         "args": {
           "$ref": "#/definitions/ArgsConstraint",
           "description": "Positional argument count constraints"
-        }
-      }
-    },
-    "Display": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "header": {
-          "type": "string",
-          "description": "Column header label"
-        },
-        "width": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Minimum column width in characters"
-        },
-        "omit": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, exclude this field from table output"
-        }
-      }
-    },
-    "OutputSpec": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "json",
-            "table",
-            "text"
-          ],
-          "default": "text",
-          "description": "Default output format for all outputs"
-        },
-        "stream": {
-          "type": "string",
-          "enum": [
-            "stdout",
-            "stderr"
-          ],
-          "default": "stdout",
-          "description": "Default output stream for all outputs"
         }
       }
     },
@@ -619,29 +532,13 @@
         }
       }
     },
-    "Response": {
+    "OutputSpec": {
       "type": "object",
       "additionalProperties": false,
-      "if": {
-        "not": {
-          "required": [
-            "$ref"
-          ]
-        }
-      },
-      "then": {
-        "required": [
-          "exit_code"
-        ]
-      },
       "properties": {
         "$ref": {
           "type": "string",
           "description": "Reference to a component schema definition. Resolved at codegen time."
-        },
-        "exit_code": {
-          "type": "integer",
-          "description": "Exit code for this output (0 for success, non-zero for error/warning)"
         },
         "description": {
           "type": "string",
@@ -649,23 +546,6 @@
         },
         "schema": {
           "$ref": "#/definitions/Schema"
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "json",
-            "table",
-            "text"
-          ],
-          "description": "Overrides command-level output format for this response only"
-        },
-        "stream": {
-          "type": "string",
-          "enum": [
-            "stdout",
-            "stderr"
-          ],
-          "description": "Overrides command-level output stream for this response only"
         }
       }
     },
@@ -679,19 +559,13 @@
         },
         "type": {
           "type": "string",
-          "description": "The type used to parse and store the value. Accepts both Go type names (bool, int, float64, []string, duration, map) and JSON Schema standard names (boolean, integer, number, array, object) — both are equivalent. Custom Go types are also accepted (e.g. 'url.URL') when the required package is listed in configuration.package.imports."
+          "description": "The type used to parse and store the value. Accepts both Go type names (bool, int, float64, []string, duration, map) and JSON Schema standard names (boolean, integer, number, array, object) — both are equivalent. Custom Go types are also accepted (e.g. 'url.URL') when the required package is listed in configuration.imports."
         },
         "nullable": {
           "type": "boolean",
           "default": false
         },
-        "title": {
-          "type": "string"
-        },
         "description": {
-          "type": "string"
-        },
-        "format": {
           "type": "string"
         },
         "enum": {
@@ -701,7 +575,6 @@
             "type": "string"
           }
         },
-        "const": {},
         "pattern": {
           "type": "string",
           "description": "Regular expression the value must match (string type only)"
@@ -713,15 +586,6 @@
         "maximum": {
           "type": "number",
           "description": "Maximum allowed value (numeric types only)"
-        },
-        "exclusiveMinimum": {
-          "type": "number"
-        },
-        "exclusiveMaximum": {
-          "type": "number"
-        },
-        "multipleOf": {
-          "type": "number"
         },
         "minLength": {
           "type": "integer",
@@ -741,10 +605,6 @@
           "type": "integer",
           "minimum": 0
         },
-        "uniqueItems": {
-          "type": "boolean",
-          "default": false
-        },
         "required": {
           "type": "array",
           "items": {
@@ -757,34 +617,8 @@
             "$ref": "#/definitions/Schema"
           }
         },
-        "additionalProperties": {},
         "items": {
           "$ref": "#/definitions/Schema"
-        },
-        "allOf": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Schema"
-          }
-        },
-        "anyOf": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Schema"
-          }
-        },
-        "oneOf": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Schema"
-          }
-        },
-        "not": {
-          "$ref": "#/definitions/Schema"
-        },
-        "display": {
-          "$ref": "#/definitions/Display",
-          "description": "Table rendering hints for this property"
         }
       }
     },
@@ -814,40 +648,14 @@
           "default": "json",
           "description": "Config file format"
         },
-        "watch": {
-          "type": "boolean",
-          "default": true,
-          "description": "When false, disables file watching for this config. Default true."
-        }
-      }
-    },
-    "ExternalBinary": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Binary name as it appears in $PATH"
+        "priority": {
+          "type": "integer",
+          "default": 0,
+          "description": "Config file load priority. Lower values are loaded first. Default 0."
         },
-        "description": {
-          "type": "string",
-          "description": "Short description shown in help output"
-        },
-        "required": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, startup fails if the binary is not found in $PATH"
-        },
-        "min_version": {
-          "type": "string",
-          "description": "Minimum required semver version (e.g. '1.2.0')"
-        },
-        "version_flag": {
-          "type": "string",
-          "description": "Flag used to retrieve the binary version (e.g. '--version')"
+        "schema": {
+          "$ref": "#/definitions/Schema",
+          "description": "When set, generates a typed config struct and validates required fields at load time."
         }
       }
     },
@@ -880,14 +688,42 @@
         }
       }
     },
-    "PluginsSpec": {
+    "RemoteCommandSpec": {
       "type": "object",
+      "required": [
+        "name"
+      ],
       "additionalProperties": false,
       "properties": {
-        "path_discovery": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Name of the remote command. The dispatched binary must be named <program>-<name> and located in the same directory as the host binary."
+        },
+        "short_description": {
+          "type": "string",
+          "description": "One-line description shown in the host's help output."
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Additional names that invoke this remote command.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          }
+        },
+        "hidden": {
           "type": "boolean",
           "default": false,
-          "description": "When true, scan $PATH for <program>-<command> binaries at startup"
+          "description": "When true, the remote command is excluded from help output."
+        },
+        "deprecated": {
+          "type": "string",
+          "description": "When set, marks the remote command as deprecated and uses the value as the warning message shown on invocation."
+        },
+        "group": {
+          "type": "string",
+          "description": "Group label matching a groups entry. Controls help output grouping."
         }
       }
     },
