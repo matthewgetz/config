@@ -13,10 +13,13 @@
     "$schema": {
       "type": "string",
       "description": "URL identifying the rotini schema version. The version segment must match the installed rotini binary version.",
-      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/config/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
+      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/go-rotini/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
     },
     "definition": {
       "$ref": "#/definitions/Definition"
+    },
+    "configuration": {
+      "$ref": "#/definitions/Configuration"
     },
     "schemas": {
       "type": "object",
@@ -24,9 +27,6 @@
       "additionalProperties": {
         "$ref": "#/definitions/Schema"
       }
-    },
-    "configuration": {
-      "$ref": "#/definitions/Configuration"
     }
   },
   "definitions": {
@@ -76,7 +76,7 @@
           "default": false,
           "description": "When true, marks the definition as deprecated. Handlers can check .Deprecated to emit their own warnings."
         },
-        "inputs": {
+        "input": {
           "$ref": "#/definitions/Inputs",
           "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
         },
@@ -116,9 +116,8 @@
           }
         },
         "timeout": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Default command execution timeout in milliseconds applied to all commands. Zero means no timeout."
+          "type": "string",
+          "description": "Default command execution timeout applied to all commands. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
         }
       }
     },
@@ -168,7 +167,7 @@
           "default": false,
           "description": "When true, marks the command as deprecated. Handlers can check .Deprecated to emit their own warnings."
         },
-        "inputs": {
+        "input": {
           "$ref": "#/definitions/Inputs",
           "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
         },
@@ -183,9 +182,8 @@
           }
         },
         "timeout": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Command execution timeout in milliseconds. Zero means no timeout."
+          "type": "string",
+          "description": "Command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
         },
         "group": {
           "type": "string",
@@ -557,7 +555,11 @@
         },
         "format": {
           "type": "string",
-          "enum": ["json", "yaml", "toml"],
+          "enum": [
+            "json",
+            "yaml",
+            "toml"
+          ],
           "default": "json",
           "description": "File format. json is the default. yaml and toml require a custom unmarshaller supplied via WithConfigurationFileYamlUnmarshaller or WithConfigurationFileTomlUnmarshaller on the ProgramBuilder."
         },
@@ -590,7 +592,10 @@
       "properties": {
         "behavior": {
           "type": "string",
-          "enum": ["fail_fast", "fail_collect"],
+          "enum": [
+            "fail_fast",
+            "fail_collect"
+          ],
           "default": "fail_fast",
           "description": "fail_fast stops at the first validation error (default); fail_collect gathers all errors before returning"
         }
@@ -635,9 +640,8 @@
           "description": "Group label matching a groups entry. Controls help output grouping."
         },
         "timeout": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Host-side timeout for the remote binary execution in milliseconds. Zero means no timeout."
+          "type": "string",
+          "description": "Host-side timeout for the remote binary execution. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
         }
       }
     },
