@@ -561,7 +561,7 @@
             "toml"
           ],
           "default": "json",
-          "description": "File format. json is the default. yaml and toml require a custom unmarshaller supplied via WithConfigurationFileYamlUnmarshaller or WithConfigurationFileTomlUnmarshaller on the ProgramBuilder."
+          "description": "File format"
         },
         "schema": {
           "$ref": "#/definitions/Schema",
@@ -649,23 +649,66 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "package": {
-          "$ref": "#/definitions/ConfigPackage"
+        "generate": {
+          "$ref": "#/definitions/GenerateConfig"
         }
       }
     },
-    "ConfigPackage": {
+    "GenerateConfig": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "path": {
-          "type": "string",
-          "description": "Base path for generated code. Framework is written to {path}/rotini/rotini.gen.go and handlers to {path}/cmd/rotini.gen.go.",
-          "default": "internal/cli"
+        "cmd": {
+          "$ref": "#/definitions/GenerateCmdConfig"
         },
-        "imports": {
+        "framework": {
+          "$ref": "#/definitions/GenerateFrameworkConfig"
+        }
+      }
+    },
+    "GenerateCmdConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "type": "string",
+          "description": "Import path (relative to module root) for the command handler package. Package name is derived from the last path segment.",
+          "default": "internal/cli/cmd"
+        },
+        "gen_file": {
+          "type": "string",
+          "description": "Name of the framework-controlled gen file placed in the command handler package (e.g. 'cmdr.gen.go'). Must end in .go.",
+          "default": "cmdr.gen.go"
+        },
+        "overwrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, rotini re-creates handler stub files from scratch on every generate run, overwriting any user modifications."
+        },
+        "prune": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, rotini removes stub files in the command handler package that no longer correspond to a command in the spec."
+        }
+      }
+    },
+    "GenerateFrameworkConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "type": "string",
+          "description": "Import path (relative to module root) for the framework package. Package name is derived from the last path segment.",
+          "default": "internal/cli/rotini"
+        },
+        "gen_file": {
+          "type": "string",
+          "description": "Name of the framework gen file placed in the framework package (e.g. 'rotini.gen.go'). Must end in .go.",
+          "default": "rotini.gen.go"
+        },
+        "additional_imports": {
           "type": "array",
-          "description": "List of Go import paths to include in generated code as a convenience if types from external packages are desired in input or output types. Each entry is a package path (e.g., 'net/url') or an aliased import (e.g., 'myalias net/url').",
+          "description": "Additional Go import paths included in the generated framework file. Use when input or output types reference third-party packages. Each entry is a package path (e.g., 'net/url') or an aliased import (e.g., 'myalias net/url').",
           "items": {
             "type": "string"
           }
