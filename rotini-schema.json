@@ -21,6 +21,13 @@
     "configuration": {
       "$ref": "#/definitions/Configuration"
     },
+    "metadata": {
+      "type": "array",
+      "description": "Build-time metadata vars injected via go ldflags. Rotini generates typed var declarations in the framework package and a Metadata struct field on CLIMetadata, accessible in all command handlers via spec.Metadata.",
+      "items": {
+        "$ref": "#/definitions/MetadataEntry"
+      }
+    },
     "schemas": {
       "type": "object",
       "description": "Reusable named schema definitions. Referenced elsewhere via \"$ref\": \"#/schemas/<Name>\".",
@@ -30,6 +37,22 @@
     }
   },
   "definitions": {
+    "MetadataEntry": {
+      "type": "object",
+      "required": ["var"],
+      "additionalProperties": false,
+      "properties": {
+        "var": {
+          "type": "string",
+          "pattern": "^[A-Z][a-zA-Z0-9_]*$",
+          "description": "Exported Go identifier for the ldflag var. Rotini declares this as a package-level var in the framework package. Inject at build time: -ldflags \"-X <module>/<framework-pkg>.<var>=<value>\""
+        },
+        "default": {
+          "type": "string",
+          "description": "Fallback value used when the ldflag has not been applied at build time. Becomes the var's initial value in the generated file."
+        }
+      }
+    },
     "Definition": {
       "type": "object",
       "required": [
