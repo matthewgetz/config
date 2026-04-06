@@ -204,6 +204,20 @@
             "$ref": "#/definitions/Command"
           }
         },
+        "remote_commands": {
+          "type": "array",
+          "description": "Explicit list of co-located remote binaries dispatched as first-class sub-commands of this command.",
+          "items": {
+            "$ref": "#/definitions/RemoteCommandSpec"
+          }
+        },
+        "events": {
+          "type": "array",
+          "description": "Events this command can emit. Each key must be unique across the entire spec.",
+          "items": {
+            "$ref": "#/definitions/EventSpec"
+          }
+        },
         "timeout": {
           "type": "string",
           "description": "Command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
@@ -703,11 +717,6 @@
           "description": "Name of the framework-controlled gen file placed in the command handler package (e.g. 'cmdr.gen.go'). Must end in .go.",
           "default": "cmdr.gen.go"
         },
-        "overwrite": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, rotini re-creates handler stub files from scratch on every generate run, overwriting any user modifications."
-        },
         "prune": {
           "type": "boolean",
           "default": true,
@@ -735,6 +744,22 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "EventSpec": {
+      "type": "object",
+      "required": ["key"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Unique event identifier (snake_case). Used to name Emit{Key} methods and On{Key} handler fields."
+        },
+        "msg": {
+          "$ref": "#/definitions/OutputSpec",
+          "description": "Shape of the event payload. Uses the same schema as command output: fields array for a struct, or a scalar type. When omitted, the emit method takes a *{BinName}{PascalKey}EventMsg of an empty struct."
         }
       }
     }
