@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Rotini CLI Spec Schema",
-  "description": "Combined schema for a Rotini CLI spec file (.rotini.json)",
+  "description": "Combined schema for a Rotini CLI spec file (.rotini.json / .rotini.yaml)",
   "type": "object",
   "required": [
     "$schema",
@@ -13,7 +13,7 @@
     "$schema": {
       "type": "string",
       "description": "URL identifying the rotini schema version. The version segment must match the installed rotini binary version.",
-      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/config/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
+      "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/rotini/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
     },
     "definition": {
       "$ref": "#/definitions/Definition"
@@ -37,6 +37,7 @@
     }
   },
   "definitions": {
+
     "MetadataEntry": {
       "type": "object",
       "required": ["var"],
@@ -53,181 +54,295 @@
         }
       }
     },
-    "Definition": {
+
+    "BaseSchema": {
       "type": "object",
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false,
+      "description": "Shared fields for Schema and InputSchema. JSON Schema Draft 7 does not support additionalProperties: false on schemas that use allOf for inheritance — strictness is enforced by Go's DisallowUnknownFields at parse time.",
       "properties": {
-        "name": {
+        "$ref": {
           "type": "string",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          "pattern": "^#/schemas/",
+          "description": "Reference to a named schema in the top-level schemas map (e.g. '#/schemas/MySchema'). Resolved at codegen time."
         },
-        "short_description": {
+        "type": {
           "type": "string",
-          "description": "One-line description shown in parent help output"
+          "description": "The type used to parse and store the value. Accepts both Go type names (bool, int, float64, []string, duration, map) and JSON Schema standard names (boolean, integer, number, array, object) — both are equivalent."
         },
-        "long_description": {
-          "type": "string",
-          "description": "Detailed description shown in per-command help output"
+        "nullable": {
+          "type": "boolean",
+          "default": false
         },
-        "examples": {
+        "description": {
+          "type": "string"
+        },
+        "enum": {
           "type": "array",
-          "description": "Example usage lines shown in root help output",
+          "description": "Allowed values; parsed values are validated against this list",
           "items": {
             "type": "string"
           }
         },
-        "usage": {
+        "pattern": {
           "type": "string",
-          "description": "Custom usage string shown instead of auto-generated usage line"
+          "description": "Regular expression the value must match (string type only)"
         },
-        "aliases": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+        "minimum": {
+          "type": "number",
+          "description": "Minimum allowed value (numeric types only)"
+        },
+        "maximum": {
+          "type": "number",
+          "description": "Maximum allowed value (numeric types only)"
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum string length (string type only)"
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum string length (string type only)"
+        },
+        "minItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Schema"
           }
         },
-        "hidden": {
-          "type": "boolean",
-          "default": false
-        },
-        "deprecated": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, marks the definition as deprecated. Handlers can check .Deprecated to emit their own warnings."
-        },
-        "input": {
-          "$ref": "#/definitions/Inputs",
-          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
-        },
-        "output": {
-          "$ref": "#/definitions/OutputSpec",
-          "description": "Declares the typed output shape for this command's Run handler. Generates a Result struct with the declared fields."
-        },
-        "commands": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Command"
-          }
-        },
-        "configuration_files": {
-          "type": "array",
-          "description": "Config files to load at startup.",
-          "items": {
-            "$ref": "#/definitions/ConfigSpec"
-          }
-        },
-        "groups": {
-          "type": "array",
-          "description": "Named groups for organising commands in help output.",
-          "items": {
-            "$ref": "#/definitions/CommandGroup"
-          }
-        },
-        "validation": {
-          "$ref": "#/definitions/ValidationSpec",
-          "description": "Validation behaviour configuration."
-        },
-        "remote_commands": {
-          "type": "array",
-          "description": "Explicit list of co-located remote binaries dispatched as first-class commands.",
-          "items": {
-            "$ref": "#/definitions/RemoteCommandSpec"
-          }
-        },
-        "timeout": {
-          "type": "string",
-          "description": "Default command execution timeout applied to all commands. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
+        "items": {
+          "$ref": "#/definitions/Schema"
         }
       }
     },
-    "Command": {
+
+    "Schema": {
+      "description": "JSON Schema-inspired type definition used for output/response and object property schemas. The 'required' field is a string array of required property names (JSON Schema object semantics). For input schemas where 'required' means 'must be provided', use InputSchema instead.",
+      "allOf": [
+        { "$ref": "#/definitions/BaseSchema" },
+        {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "array",
+              "description": "Required property names for object schemas (standard JSON Schema semantics).",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+
+    "InputSchema": {
+      "description": "Extended schema for input definitions (flags, arguments, env vars, config values, stdin). Inherits all BaseSchema fields and adds input-level metadata. The 'required' field here is a boolean indicating whether this input must be provided — unlike Schema where 'required' is a string array of property names.",
+      "allOf": [
+        { "$ref": "#/definitions/BaseSchema" },
+        {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean",
+              "default": false,
+              "description": "When true, the input must be provided (or stdin must not be empty for stdin inputs). Note: this is a boolean — unlike the string-array 'required' on Schema."
+            },
+            "deprecated": {
+              "type": "boolean",
+              "default": false,
+              "description": "When true, marks the input as deprecated. Handlers can check .Deprecated to emit their own warnings."
+            },
+            "default": {
+              "description": "Default value applied when the input is not provided"
+            },
+            "hidden": {
+              "type": "boolean",
+              "default": false,
+              "description": "When true, the input is hidden from help output (flags only)"
+            },
+            "placeholder": {
+              "type": "string",
+              "description": "Custom placeholder shown in help usage lines (flags only)"
+            },
+            "group": {
+              "type": "string",
+              "description": "Group label for help output"
+            },
+            "example": {
+              "type": "string",
+              "description": "Example value shown in help output"
+            },
+            "variable": {
+              "type": "string",
+              "description": "Environment variable name (environment inputs only)",
+              "pattern": "^[A-Z_][A-Z0-9_]*$"
+            },
+            "file": {
+              "type": "string",
+              "description": "Config file logical name to read from (config_values inputs only)"
+            },
+            "key": {
+              "type": "string",
+              "description": "Key path within the config file (config_values inputs only, e.g., 'server.port')"
+            }
+          }
+        }
+      ]
+    },
+
+    "FlagConstraints": {
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "additionalProperties": false,
+      "description": "Declares mutual-exclusion or co-requirement grouping for a flag. All flags that share a group name and constraint type are evaluated together at parse time. A flag may belong to at most one constraint group.",
+      "properties": {
+        "xor": {
+          "type": "string",
+          "description": "Group name. At most one flag in this group may be provided."
+        },
+        "and": {
+          "type": "string",
+          "description": "Group name. All flags in this group must be provided together, or none."
+        },
+        "one_of": {
+          "type": "string",
+          "description": "Group name. Exactly one flag in this group must be provided."
+        }
+      }
+    },
+
+    "OutputSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "pattern": "^#/schemas/",
+          "description": "Reference to a named schema in the top-level schemas map (e.g. '#/schemas/MySchema'). When set, the schema is inlined at codegen time and $ref should not also be set."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this output"
+        },
+        "schema": {
+          "$ref": "#/definitions/Schema"
+        }
+      }
+    },
+
+    "FlagInput": {
+      "type": "object",
+      "required": ["name"],
       "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Logical name for the flag"
         },
-        "short_description": {
+        "description": {
           "type": "string",
-          "description": "One-line description shown in parent help output"
+          "description": "Human-readable description shown in help output"
         },
-        "long_description": {
-          "type": "string",
-          "description": "Detailed description shown in per-command help output"
+        "schema": {
+          "$ref": "#/definitions/InputSchema",
+          "description": "Type definition and input-level metadata (required, deprecated, default, hidden, placeholder, group, example)"
         },
-        "examples": {
+        "identifiers": {
           "type": "array",
-          "description": "Example usage lines shown in per-command help output",
-          "items": {
-            "type": "string"
-          }
-        },
-        "usage": {
-          "type": "string",
-          "description": "Custom usage string shown instead of auto-generated usage line"
-        },
-        "aliases": {
-          "type": "array",
+          "description": "CLI flag identifiers (e.g., '--force', '-f'). When absent, '--<name>' is auto-derived.",
+          "minItems": 1,
           "items": {
             "type": "string",
-            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+            "pattern": "^-{1,2}[a-zA-Z][a-zA-Z0-9_-]*$"
           }
         },
-        "hidden": {
-          "type": "boolean",
-          "default": false
-        },
-        "deprecated": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, marks the command as deprecated. Handlers can check .Deprecated to emit their own warnings."
-        },
-        "input": {
-          "$ref": "#/definitions/Inputs",
-          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
-        },
-        "output": {
-          "$ref": "#/definitions/OutputSpec",
-          "description": "Declares the typed output shape for this command's Run handler. Generates a Result struct with the declared fields."
-        },
-        "commands": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Command"
-          }
-        },
-        "remote_commands": {
-          "type": "array",
-          "description": "Explicit list of co-located remote binaries dispatched as first-class sub-commands of this command.",
-          "items": {
-            "$ref": "#/definitions/RemoteCommandSpec"
-          }
-        },
-        "events": {
-          "type": "array",
-          "description": "Events this command can emit. Each key must be unique across the entire spec.",
-          "items": {
-            "$ref": "#/definitions/EventSpec"
-          }
-        },
-        "timeout": {
-          "type": "string",
-          "description": "Command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
-        },
-        "group": {
-          "type": "string",
-          "description": "Group label matching a groups entry. Controls help output grouping."
+        "constraints": {
+          "$ref": "#/definitions/FlagConstraints",
+          "description": "Mutual-exclusion or co-requirement group membership for this flag."
         }
       }
     },
+
+    "ArgumentInput": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Logical name for the argument"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description shown in help output"
+        },
+        "schema": {
+          "$ref": "#/definitions/InputSchema",
+          "description": "Type definition and input-level metadata (required, deprecated, default, group, example)"
+        }
+      }
+    },
+
+    "ConfigInput": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Logical name for this config value"
+        },
+        "description": {
+          "type": "string"
+        },
+        "schema": {
+          "$ref": "#/definitions/InputSchema",
+          "description": "Type definition and input-level metadata (required, default, file, key)"
+        }
+      }
+    },
+
+    "EnvInput": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Logical name for this env var input"
+        },
+        "description": {
+          "type": "string"
+        },
+        "schema": {
+          "$ref": "#/definitions/InputSchema",
+          "description": "Type definition and input-level metadata (required, default, variable)"
+        }
+      }
+    },
+
+    "StdinSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "$ref": "#/definitions/InputSchema",
+          "description": "Type definition for stdin content. Set required: true in schema to error when stdin is empty."
+        }
+      }
+    },
+
     "Inputs": {
       "type": "object",
       "additionalProperties": false,
@@ -266,351 +381,27 @@
         }
       }
     },
-    "FlagInput": {
+
+    "EventSpec": {
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "required": ["key"],
       "additionalProperties": false,
       "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-          "description": "Logical name for the flag"
-        },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description shown in help output"
-        },
-        "schema": {
-          "$ref": "#/definitions/InputSchema",
-          "description": "Type definition and input-level metadata (required, deprecated, default, hidden, placeholder, group, example)"
-        },
-        "identifiers": {
-          "type": "array",
-          "description": "CLI flag identifiers (e.g., '--force', '-f'). When absent, '--<name>' is auto-derived.",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "pattern": "^-{1,2}[a-zA-Z][a-zA-Z0-9_-]*$"
-          }
-        }
-      }
-    },
-    "ArgumentInput": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-          "description": "Logical name for the argument"
-        },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description shown in help output"
-        },
-        "schema": {
-          "$ref": "#/definitions/InputSchema",
-          "description": "Type definition and input-level metadata (required, deprecated, default, group, example)"
-        }
-      }
-    },
-    "ConfigInput": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-          "description": "Logical name for this config value"
-        },
-        "description": {
-          "type": "string"
-        },
-        "schema": {
-          "$ref": "#/definitions/InputSchema",
-          "description": "Type definition and input-level metadata (required, default, file, key)"
-        }
-      }
-    },
-    "EnvInput": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-          "description": "Logical name for this env var input"
-        },
-        "description": {
-          "type": "string"
-        },
-        "schema": {
-          "$ref": "#/definitions/InputSchema",
-          "description": "Type definition and input-level metadata (required, default, variable)"
-        }
-      }
-    },
-    "StdinSpec": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "schema": {
-          "$ref": "#/definitions/InputSchema",
-          "description": "Type definition for stdin content. Set required: true in schema to error when stdin is empty."
-        }
-      }
-    },
-    "OutputSpec": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "$ref": {
-          "type": "string",
-          "description": "Reference to a named schema in the top-level schemas map (e.g. '#/schemas/MySchema'). Resolved at codegen time."
-        },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description of this output"
-        },
-        "schema": {
-          "$ref": "#/definitions/Schema"
-        }
-      }
-    },
-    "Schema": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "JSON Schema-inspired type definition used for output/response and object property schemas.",
-      "properties": {
-        "$ref": {
-          "type": "string",
-          "description": "Reference to a named schema in the top-level schemas map (e.g. '#/schemas/MySchema'). Resolved at codegen time."
-        },
-        "type": {
-          "type": "string",
-          "description": "The type used to parse and store the value. Accepts both Go type names (bool, int, float64, []string, duration, map) and JSON Schema standard names (boolean, integer, number, array, object) — both are equivalent."
-        },
-        "nullable": {
-          "type": "boolean",
-          "default": false
-        },
-        "description": {
-          "type": "string"
-        },
-        "enum": {
-          "type": "array",
-          "description": "Allowed values; parsed values are validated against this list",
-          "items": {
-            "type": "string"
-          }
-        },
-        "pattern": {
-          "type": "string",
-          "description": "Regular expression the value must match (string type only)"
-        },
-        "minimum": {
-          "type": "number",
-          "description": "Minimum allowed value (numeric types only)"
-        },
-        "maximum": {
-          "type": "number",
-          "description": "Maximum allowed value (numeric types only)"
-        },
-        "minLength": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Minimum string length (string type only)"
-        },
-        "maxLength": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Maximum string length (string type only)"
-        },
-        "minItems": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "maxItems": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "required": {
-          "type": "array",
-          "description": "Required property names (JSON Schema semantics, for object schemas only)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/Schema"
-          }
-        },
-        "items": {
-          "$ref": "#/definitions/Schema"
-        }
-      }
-    },
-    "InputSchema": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Extended schema for input definitions (flags, arguments, env vars, config values, stdin). Includes all Schema fields plus input-level metadata.",
-      "properties": {
-        "$ref": {
-          "type": "string",
-          "description": "Reference to a named schema in the top-level schemas map (e.g. '#/schemas/MySchema'). Resolved at codegen time."
-        },
-        "type": {
-          "type": "string",
-          "description": "The type used to parse and store the value. Accepts both Go type names (bool, int, float64, []string, duration, map) and JSON Schema standard names (boolean, integer, number, array, object) — both are equivalent."
-        },
-        "nullable": {
-          "type": "boolean",
-          "default": false
-        },
-        "description": {
-          "type": "string"
-        },
-        "enum": {
-          "type": "array",
-          "description": "Allowed values; parsed values are validated against this list",
-          "items": {
-            "type": "string"
-          }
-        },
-        "pattern": {
-          "type": "string",
-          "description": "Regular expression the value must match (string type only)"
-        },
-        "minimum": {
-          "type": "number",
-          "description": "Minimum allowed value (numeric types only)"
-        },
-        "maximum": {
-          "type": "number",
-          "description": "Maximum allowed value (numeric types only)"
-        },
-        "minLength": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Minimum string length (string type only)"
-        },
-        "maxLength": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Maximum string length (string type only)"
-        },
-        "minItems": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "maxItems": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "required": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, the input must be provided (or stdin must not be empty for stdin inputs)"
-        },
-        "deprecated": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, marks the input as deprecated. Handlers can check .Deprecated to emit their own warnings."
-        },
-        "default": {
-          "description": "Default value applied when the input is not provided"
-        },
-        "hidden": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, the input is hidden from help output (flags only)"
-        },
-        "placeholder": {
-          "type": "string",
-          "description": "Custom placeholder shown in help usage lines (flags only)"
-        },
-        "group": {
-          "type": "string",
-          "description": "Group label for help output"
-        },
-        "example": {
-          "type": "string",
-          "description": "Example value shown in help output"
-        },
-        "variable": {
-          "type": "string",
-          "description": "Environment variable name (environment inputs only)",
-          "pattern": "^[A-Z_][A-Z0-9_]*$"
-        },
-        "file": {
-          "type": "string",
-          "description": "Config file logical name to read from (config_values inputs only)"
-        },
         "key": {
           "type": "string",
-          "description": "Key path within the config file (config_values inputs only, e.g., 'server.port')"
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Unique event identifier (snake_case). Used to name Emit{Key} methods and On{Key} handler fields."
         },
-        "properties": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/Schema"
-          }
-        },
-        "items": {
-          "$ref": "#/definitions/Schema"
+        "msg": {
+          "$ref": "#/definitions/OutputSpec",
+          "description": "Shape of the event payload. Uses the same schema as command output: fields array for a struct, or a scalar type. When omitted, the emit method takes a *{BinName}{PascalKey}EventMsg of an empty struct."
         }
       }
     },
-    "ConfigSpec": {
-      "type": "object",
-      "required": [
-        "name",
-        "path"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Logical name for the config file (e.g., 'app-config')"
-        },
-        "path": {
-          "type": "string",
-          "description": "File path (supports ~ for home dir)"
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "json",
-            "yaml",
-            "toml"
-          ],
-          "default": "json",
-          "description": "File format"
-        },
-        "schema": {
-          "$ref": "#/definitions/Schema",
-          "description": "When set, generates a typed config struct and validates required fields at load time."
-        }
-      }
-    },
+
     "CommandGroup": {
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -623,26 +414,23 @@
         }
       }
     },
+
     "ValidationSpec": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "behavior": {
           "type": "string",
-          "enum": [
-            "fail_fast",
-            "fail_collect"
-          ],
+          "enum": ["fail_fast", "fail_collect"],
           "default": "fail_fast",
           "description": "fail_fast stops at the first validation error (default); fail_collect gathers all errors before returning"
         }
       }
     },
+
     "RemoteCommandSpec": {
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -682,6 +470,588 @@
         }
       }
     },
+
+    "ConfigSpec": {
+      "type": "object",
+      "required": ["name", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Logical name for the config file (e.g., 'app-config')"
+        },
+        "path": {
+          "type": "string",
+          "description": "File path (supports ~ for home dir)"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "yaml", "toml"],
+          "default": "json",
+          "description": "File format"
+        },
+        "schema": {
+          "$ref": "#/definitions/Schema",
+          "description": "When set, generates a typed config struct and validates required fields at load time."
+        },
+        "hot_reload": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, watches the config file for changes and reloads at runtime without restarting the process."
+        },
+        "hot_reload_debounce": {
+          "type": "string",
+          "default": "200ms",
+          "description": "Debounce window for hot-reload file-change events. Uses Go duration format (e.g. '200ms'). Defaults to '200ms' when omitted."
+        }
+      }
+    },
+
+    "ReplConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the interactive REPL execution mode.",
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Custom prompt string shown before each input line."
+        },
+        "banner": {
+          "type": "string",
+          "description": "Welcome banner printed when the REPL starts."
+        },
+        "history_size": {
+          "type": "integer",
+          "description": "Maximum number of lines to retain in the input history."
+        },
+        "history_file": {
+          "type": "string",
+          "description": "File path for persisting input history across sessions."
+        },
+        "exit_commands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Words that cause the REPL to exit cleanly (e.g. [\"exit\", \"quit\"])."
+        },
+        "unknown_input": {
+          "type": "string",
+          "enum": ["ignore", "error", "passthrough"],
+          "description": "How to handle input that doesn't match a known command."
+        },
+        "multiline_continuation": {
+          "type": "string",
+          "description": "Character or string that signals line continuation in multi-line input."
+        }
+      }
+    },
+
+    "WatchConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the filesystem watcher execution mode.",
+      "properties": {
+        "paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File/directory paths to watch for changes."
+        },
+        "ignore": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for paths to exclude from watching."
+        },
+        "debounce": {
+          "type": "string",
+          "description": "Debounce duration before triggering the handler after changes. Go duration format."
+        },
+        "events": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["create", "write", "remove", "rename", "chmod"] },
+          "description": "Filesystem event types to react to."
+        },
+        "recursive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Watch directories recursively."
+        },
+        "run_on_start": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run the handler once immediately when the watcher starts."
+        },
+        "cancel_in_flight": {
+          "type": "boolean",
+          "default": false,
+          "description": "Cancel an in-progress handler invocation when a new change arrives."
+        },
+        "max_concurrency": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of concurrent handler invocations (0 = unlimited)."
+        }
+      }
+    },
+
+    "PipelineConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the stdin streaming pipeline execution mode.",
+      "properties": {
+        "input_mode": {
+          "type": "string",
+          "enum": ["lines", "chunks", "whole"],
+          "description": "How stdin is split before being passed to the handler."
+        },
+        "chunk_size": {
+          "type": "integer",
+          "description": "Byte size for chunks (input_mode: chunks only)."
+        },
+        "delimiter": {
+          "type": "string",
+          "description": "Custom record delimiter (input_mode: lines)."
+        },
+        "output_mode": {
+          "type": "string",
+          "enum": ["lines", "passthrough"],
+          "description": "How handler output is written to stdout."
+        },
+        "error_handling": {
+          "type": "string",
+          "enum": ["skip", "halt", "stderr"],
+          "description": "What to do when the handler returns an error for a record."
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of records processed concurrently."
+        },
+        "preserve_order": {
+          "type": "boolean",
+          "default": false,
+          "description": "Emit output in input order even when concurrency > 1."
+        },
+        "flush_on_each": {
+          "type": "boolean",
+          "default": false,
+          "description": "Flush stdout after each record output."
+        }
+      }
+    },
+
+    "ScheduledConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the cron-driven scheduled execution mode.",
+      "properties": {
+        "schedule": {
+          "type": "string",
+          "description": "Cron expression defining when the handler runs (e.g. '0 * * * *')."
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone name for the cron schedule (e.g. 'America/New_York'). Defaults to UTC."
+        },
+        "overlap": {
+          "type": "string",
+          "enum": ["skip", "queue", "replace"],
+          "description": "What to do when a new scheduled run is triggered while a prior one is still in progress."
+        },
+        "missed_run": {
+          "type": "string",
+          "enum": ["skip", "run_once", "run_all"],
+          "description": "What to do with runs that were missed while the process was down."
+        },
+        "shutdown_drain_timeout": {
+          "type": "string",
+          "description": "How long to wait for in-progress runs to finish on shutdown. Go duration format."
+        },
+        "max_run_duration": {
+          "type": "string",
+          "description": "Maximum allowed duration for a single scheduled run. Go duration format."
+        },
+        "jitter": {
+          "type": "string",
+          "description": "Random jitter added to each scheduled run time. Go duration format."
+        }
+      }
+    },
+
+    "WorkerRetryConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Retry behavior for worker mode.",
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of attempts before the item is considered failed."
+        },
+        "backoff": {
+          "type": "string",
+          "enum": ["fixed", "linear", "exponential"],
+          "description": "Backoff strategy between retry attempts."
+        },
+        "backoff_initial": {
+          "type": "string",
+          "description": "Initial backoff duration. Go duration format."
+        },
+        "backoff_max": {
+          "type": "string",
+          "description": "Maximum backoff duration cap. Go duration format."
+        },
+        "retryable_exit_codes": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "Exit codes that trigger a retry. Empty means all non-zero codes are retried."
+        }
+      }
+    },
+
+    "WorkerDeadLetterConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Dead-letter handling for permanently-failed worker items.",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["log", "discard", "requeue"],
+          "description": "What to do with items that exhaust all retry attempts."
+        },
+        "max_age": {
+          "type": "string",
+          "description": "Maximum age of a dead-letter item before it is discarded. Go duration format."
+        }
+      }
+    },
+
+    "WorkerConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the concurrent queue-processor execution mode.",
+      "properties": {
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of items processed concurrently."
+        },
+        "poll_interval": {
+          "type": "string",
+          "description": "How often to poll the queue for new items. Go duration format."
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of items fetched per poll cycle."
+        },
+        "shutdown_drain_timeout": {
+          "type": "string",
+          "description": "How long to wait for in-flight items to finish on shutdown. Go duration format."
+        },
+        "retry": {
+          "$ref": "#/definitions/WorkerRetryConfig"
+        },
+        "dead_letter": {
+          "$ref": "#/definitions/WorkerDeadLetterConfig"
+        }
+      }
+    },
+
+    "ServerHealthCheckConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Health probe configuration for server mode.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["http", "tcp", "exec"],
+          "description": "Probe mechanism."
+        },
+        "path": {
+          "type": "string",
+          "description": "HTTP path for the probe (http type only)."
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port for the probe (http and tcp types)."
+        },
+        "interval": {
+          "type": "string",
+          "description": "How often the probe runs. Go duration format."
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Probe timeout. Go duration format."
+        },
+        "failure_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of consecutive failures before the server is considered unhealthy."
+        }
+      }
+    },
+
+    "ServerConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the long-running foreground server execution mode.",
+      "properties": {
+        "shutdown_timeout": {
+          "type": "string",
+          "description": "How long to wait for graceful shutdown before forcing termination. Go duration format."
+        },
+        "startup_timeout": {
+          "type": "string",
+          "description": "Maximum time allowed for the server to reach ready state. Go duration format."
+        },
+        "ready_signal": {
+          "type": "string",
+          "enum": ["socket", "http", "channel"],
+          "description": "Mechanism the server uses to signal it is ready to accept traffic."
+        },
+        "health_check": {
+          "$ref": "#/definitions/ServerHealthCheckConfig"
+        },
+        "restart_on_unhealthy": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically restart the server process when health checks fail."
+        },
+        "restart_policy": {
+          "type": "string",
+          "enum": ["never", "on_failure", "always"],
+          "description": "When to restart the server process."
+        },
+        "max_restarts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of automatic restarts (0 = unlimited)."
+        }
+      }
+    },
+
+    "DaemonConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the background daemon execution mode.",
+      "properties": {
+        "pid_file": {
+          "type": "string",
+          "description": "Path to write the daemon's PID file."
+        },
+        "log_file": {
+          "type": "string",
+          "description": "Path to redirect stdout/stderr when running as a daemon."
+        },
+        "working_dir": {
+          "type": "string",
+          "description": "Working directory for the daemon process."
+        },
+        "restart_policy": {
+          "type": "string",
+          "enum": ["never", "on_failure", "always"],
+          "description": "When to restart the daemon process."
+        },
+        "max_restarts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of automatic restarts (0 = unlimited)."
+        },
+        "restart_backoff": {
+          "type": "string",
+          "enum": ["fixed", "linear", "exponential"],
+          "description": "Backoff strategy between restart attempts."
+        },
+        "restart_backoff_initial": {
+          "type": "string",
+          "description": "Initial backoff duration between restarts. Go duration format."
+        },
+        "restart_backoff_max": {
+          "type": "string",
+          "description": "Maximum backoff duration between restarts. Go duration format."
+        },
+        "shutdown_timeout": {
+          "type": "string",
+          "description": "How long to wait for graceful shutdown. Go duration format."
+        },
+        "umask": {
+          "type": "string",
+          "description": "Octal umask for the daemon process (e.g. '022')."
+        }
+      }
+    },
+
+    "ExecutionMode": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "description": "Configures the runtime execution lifecycle for a command. When omitted, the command runs once and exits (one_shot). Each type has a corresponding configuration block with the same name.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["repl", "watch", "pipeline", "scheduled", "worker", "server", "daemon"],
+          "description": "Execution lifecycle mode. Determines which config block is used and which runtime loop the framework generates."
+        },
+        "repl":      { "$ref": "#/definitions/ReplConfig" },
+        "watch":     { "$ref": "#/definitions/WatchConfig" },
+        "pipeline":  { "$ref": "#/definitions/PipelineConfig" },
+        "scheduled": { "$ref": "#/definitions/ScheduledConfig" },
+        "worker":    { "$ref": "#/definitions/WorkerConfig" },
+        "server":    { "$ref": "#/definitions/ServerConfig" },
+        "daemon":    { "$ref": "#/definitions/DaemonConfig" }
+      }
+    },
+
+    "CommandBase": {
+      "type": "object",
+      "description": "Shared command-level properties inherited by both Command (strict) and Definition (extended). JSON Schema Draft 7 does not support additionalProperties: false when using allOf inheritance, so strictness is enforced by Go's DisallowUnknownFields at parse time.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Command name used in routing and help output."
+        },
+        "short_description": {
+          "type": "string",
+          "description": "One-line description shown in parent help output"
+        },
+        "long_description": {
+          "type": "string",
+          "description": "Detailed description shown in per-command help output"
+        },
+        "examples": {
+          "type": "array",
+          "description": "Example usage lines shown in per-command help output",
+          "items": { "type": "string" }
+        },
+        "usage": {
+          "type": "string",
+          "description": "Custom usage string shown instead of the auto-generated usage line"
+        },
+        "group": {
+          "type": "string",
+          "description": "Group label matching a groups entry. Controls help output grouping."
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Additional names that invoke this command. Command aliases affect dispatch routing; use identifiers on flags for flag aliases.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          }
+        },
+        "hidden": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the command is runnable but omitted from help output — useful for internal or beta commands."
+        },
+        "deprecated": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, marks the command as deprecated. The framework surfaces this status in CLIMetadata; handlers decide when and how to emit a warning (Zero runtime opinions)."
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
+        },
+        "input": {
+          "$ref": "#/definitions/Inputs",
+          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
+        },
+        "commands": {
+          "type": "array",
+          "description": "Sub-commands of this command.",
+          "items": { "$ref": "#/definitions/Command" }
+        },
+        "remote_commands": {
+          "type": "array",
+          "description": "Explicit list of co-located remote binaries dispatched as first-class sub-commands of this command.",
+          "items": { "$ref": "#/definitions/RemoteCommandSpec" }
+        },
+        "events": {
+          "type": "array",
+          "description": "Events this command can emit. Each key must be unique across the entire spec.",
+          "items": { "$ref": "#/definitions/EventSpec" }
+        },
+        "execution_mode": {
+          "$ref": "#/definitions/ExecutionMode",
+          "description": "Configures the runtime execution lifecycle for this command. When omitted, the command runs once and exits."
+        }
+      }
+    },
+
+    "Command": {
+      "description": "A command node in the CLI command tree.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "allOf": [{ "$ref": "#/definitions/CommandBase" }],
+      "properties": {
+        "name": {},
+        "short_description": {},
+        "long_description": {},
+        "examples": {},
+        "usage": {},
+        "group": {},
+        "aliases": {},
+        "hidden": {},
+        "deprecated": {},
+        "timeout": {},
+        "input": {},
+        "commands": {},
+        "remote_commands": {},
+        "events": {},
+        "execution_mode": {}
+      }
+    },
+
+    "Definition": {
+      "description": "The root CLI definition. Extends all command-level fields with root-only settings (configuration files, groups, validation, env_prefix, path_discovery). Note: JSON Schema Draft 7 prevents additionalProperties: false from working correctly with allOf inheritance — strictness is enforced by Go's DisallowUnknownFields at parse time.",
+      "type": "object",
+      "required": ["name"],
+      "allOf": [{ "$ref": "#/definitions/CommandBase" }],
+      "properties": {
+        "name": {},
+        "short_description": {},
+        "long_description": {},
+        "examples": {},
+        "usage": {},
+        "group": {},
+        "aliases": {},
+        "hidden": {},
+        "deprecated": {},
+        "timeout": {},
+        "input": {},
+        "commands": {},
+        "remote_commands": {},
+        "events": {},
+        "execution_mode": {},
+        "configuration_files": {
+          "type": "array",
+          "description": "Config files to load at startup.",
+          "items": { "$ref": "#/definitions/ConfigSpec" }
+        },
+        "groups": {
+          "type": "array",
+          "description": "Named groups for organising commands in help output.",
+          "items": { "$ref": "#/definitions/CommandGroup" }
+        },
+        "validation": {
+          "$ref": "#/definitions/ValidationSpec",
+          "description": "Validation behaviour configuration."
+        },
+        "env_prefix": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "description": "Prefix prepended to all auto-derived environment variable names (e.g. 'MYAPP' → 'MYAPP_FLAG_NAME'). Must be uppercase A-Z/0-9/_ with no trailing underscore."
+        },
+        "path_discovery": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, enables path-based command routing for the CLI."
+        }
+      }
+    },
+
     "Configuration": {
       "type": "object",
       "additionalProperties": false,
@@ -691,6 +1061,7 @@
         }
       }
     },
+
     "GenerateConfig": {
       "type": "object",
       "additionalProperties": false,
@@ -703,6 +1074,7 @@
         }
       }
     },
+
     "GenerateCmdConfig": {
       "type": "object",
       "additionalProperties": false,
@@ -718,12 +1090,29 @@
           "default": "cmdr.gen.go"
         },
         "prune": {
-          "type": "boolean",
-          "default": true,
-          "description": "When true, rotini removes stub files in the command handler package that no longer correspond to a command in the spec."
+          "$ref": "#/definitions/PruneConfig"
         }
       }
     },
+
+    "PruneConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Controls pruning of stub files in the command handler package.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, rotini removes stub files in the command handler package that no longer correspond to a command in the spec."
+        },
+        "keep": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File names (not paths) that should never be removed by pruning, even when they do not correspond to a command in the spec."
+        }
+      }
+    },
+
     "GenerateFrameworkConfig": {
       "type": "object",
       "additionalProperties": false,
@@ -746,22 +1135,7 @@
           }
         }
       }
-    },
-    "EventSpec": {
-      "type": "object",
-      "required": ["key"],
-      "additionalProperties": false,
-      "properties": {
-        "key": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "description": "Unique event identifier (snake_case). Used to name Emit{Key} methods and On{Key} handler fields."
-        },
-        "msg": {
-          "$ref": "#/definitions/OutputSpec",
-          "description": "Shape of the event payload. Uses the same schema as command output: fields array for a struct, or a scalar type. When omitted, the emit method takes a *{BinName}{PascalKey}EventMsg of an empty struct."
-        }
-      }
     }
+
   }
 }
