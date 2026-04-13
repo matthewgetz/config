@@ -5,7 +5,7 @@
   "type": "object",
   "required": [
     "$schema",
-    "definition",
+    "commands",
     "configuration"
   ],
   "additionalProperties": false,
@@ -15,8 +15,25 @@
       "description": "URL identifying the rotini schema version. The version segment must match the installed rotini binary version.",
       "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/config/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
     },
-    "definition": {
-      "$ref": "#/definitions/Definition"
+    "commands": {
+      "$ref": "#/definitions/Command",
+      "description": "The root command definition. Has the same structure as any command node."
+    },
+    "configuration_files": {
+      "type": "array",
+      "description": "Config files to load at startup.",
+      "items": {
+        "$ref": "#/definitions/ConfigSpec"
+      }
+    },
+    "validation": {
+      "$ref": "#/definitions/ValidationSpec",
+      "description": "Validation behaviour configuration."
+    },
+    "env_prefix": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "Prefix prepended to all auto-derived environment variable names (e.g. 'MYAPP' → 'MYAPP_FLAG_NAME'). Must be uppercase A-Z/0-9/_ with no trailing underscore."
     },
     "configuration": {
       "$ref": "#/definitions/Configuration"
@@ -503,74 +520,6 @@
           "items": {
             "$ref": "#/definitions/EventSpec"
           }
-        }
-      }
-    },
-    "Definition": {
-      "description": "The root command. Has all command fields plus root-only settings (configuration_files, validation, env_prefix, path_discovery).",
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-          "description": "Command name used in routing (expected binary name)."
-        },
-        "aliases": {
-          "type": "array",
-          "description": "Additional names that invoke this command.",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
-          }
-        },
-        "timeout": {
-          "type": "string",
-          "description": "Command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
-        },
-        "input": {
-          "$ref": "#/definitions/Inputs",
-          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables."
-        },
-        "commands": {
-          "type": "array",
-          "description": "Sub-commands of this command.",
-          "items": {
-            "$ref": "#/definitions/Command"
-          }
-        },
-        "remote_commands": {
-          "type": "array",
-          "description": "Co-located remote binaries dispatched as first-class sub-commands of this command.",
-          "items": {
-            "$ref": "#/definitions/RemoteCommandSpec"
-          }
-        },
-        "events": {
-          "type": "array",
-          "description": "Events this command can emit. Each key must be unique across the entire spec.",
-          "items": {
-            "$ref": "#/definitions/EventSpec"
-          }
-        },
-        "configuration_files": {
-          "type": "array",
-          "description": "Config files to load at startup.",
-          "items": {
-            "$ref": "#/definitions/ConfigSpec"
-          }
-        },
-        "validation": {
-          "$ref": "#/definitions/ValidationSpec",
-          "description": "Validation behaviour configuration."
-        },
-        "env_prefix": {
-          "type": "string",
-          "pattern": "^[A-Z][A-Z0-9_]*$",
-          "description": "Prefix prepended to all auto-derived environment variable names (e.g. 'MYAPP' \u2192 'MYAPP_FLAG_NAME'). Must be uppercase A-Z/0-9/_ with no trailing underscore."
         }
       }
     },
