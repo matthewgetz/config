@@ -33,10 +33,6 @@
         "$ref": "#/definitions/EventSpec"
       }
     },
-    "validation": {
-      "$ref": "#/definitions/ValidationSpec",
-      "description": "Validation behaviour configuration."
-    },
     "configuration": {
       "$ref": "#/definitions/Configuration"
     },
@@ -196,24 +192,6 @@
         }
       ]
     },
-    "OutputSpec": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "$ref": {
-          "type": "string",
-          "pattern": "^#/schemas/",
-          "description": "Reference to a named schema in the top-level schemas map (e.g. '#/schemas/MySchema'). When set, the schema is inlined at codegen time and $ref should not also be set."
-        },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description of this output"
-        },
-        "schema": {
-          "$ref": "#/definitions/Schema"
-        }
-      }
-    },
     "FlagInput": {
       "type": "object",
       "required": [
@@ -346,33 +324,18 @@
     "EventSpec": {
       "type": "object",
       "required": [
-        "key"
+        "name"
       ],
       "additionalProperties": false,
       "properties": {
-        "key": {
+        "name": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]*$",
-          "description": "Unique event identifier (snake_case). Used to name Emit{Key} methods and On{Key} handler fields."
+          "description": "Unique event name (snake_case). Used to name Emit{Name} methods and On{Name} handler fields."
         },
-        "msg": {
-          "$ref": "#/definitions/OutputSpec",
-          "description": "Shape of the event payload. Uses the same schema as command output: fields array for a struct, or a scalar type. When omitted, the emit method takes a *{BinName}{PascalKey}EventMsg of an empty struct."
-        }
-      }
-    },
-    "ValidationSpec": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "behavior": {
-          "type": "string",
-          "enum": [
-            "fail_fast",
-            "fail_collect"
-          ],
-          "default": "fail_fast",
-          "description": "fail_fast stops at the first validation error (default); fail_collect gathers all errors before returning"
+        "schema": {
+          "$ref": "#/definitions/Schema",
+          "description": "Shape of the event payload. When omitted, the emit method takes a *{BinName}{PascalName}EventMsg of an empty struct."
         }
       }
     },
