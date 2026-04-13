@@ -299,9 +299,6 @@
           "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
           "description": "Logical name for this config value"
         },
-        "description": {
-          "type": "string"
-        },
         "schema": {
           "$ref": "#/definitions/InputSchema",
           "description": "Type definition and input-level metadata (required, default, file, key)"
@@ -319,9 +316,6 @@
           "type": "string",
           "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
           "description": "Logical name for this env var input"
-        },
-        "description": {
-          "type": "string"
         },
         "schema": {
           "$ref": "#/definitions/InputSchema",
