@@ -5,7 +5,7 @@
   "type": "object",
   "required": [
     "$schema",
-    "commands",
+    "definition",
     "configuration"
   ],
   "additionalProperties": false,
@@ -15,33 +15,12 @@
       "description": "URL identifying the rotini schema version. The version segment must match the installed rotini binary version.",
       "pattern": "^https://raw\\.githubusercontent\\.com/matthewgetz/config/refs/tags/[0-9]+\\.[0-9]+\\.[0-9]+/rotini-schema\\.json$"
     },
-    "commands": {
-      "$ref": "#/definitions/Command",
-      "description": "The root command definition. Has the same structure as any command node."
-    },
-    "files": {
-      "type": "array",
-      "description": "Config files to load at startup.",
-      "items": {
-        "$ref": "#/definitions/ConfigSpec"
-      }
-    },
-    "events": {
-      "type": "array",
-      "description": "Events this program can emit. Each key must be unique.",
-      "items": {
-        "$ref": "#/definitions/EventSpec"
-      }
+    "definition": {
+      "$ref": "#/definitions/Definition",
+      "description": "The root program definition: command routing, config files, events, and metadata."
     },
     "configuration": {
       "$ref": "#/definitions/Configuration"
-    },
-    "metadata": {
-      "type": "array",
-      "description": "Build-time metadata vars injected via go ldflags. Rotini generates typed var declarations in the framework package and a Metadata struct field on CLIMetadata, accessible in all command handlers via spec.Metadata.",
-      "items": {
-        "$ref": "#/definitions/MetadataEntry"
-      }
     },
     "schemas": {
       "type": "object",
@@ -394,6 +373,72 @@
         "schema": {
           "$ref": "#/definitions/Schema",
           "description": "When set, generates a typed config struct and validates required fields at load time."
+        }
+      }
+    },
+    "Definition": {
+      "description": "The root program definition. Extends the root command with program-level declarations.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Root command name used in routing."
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Additional names that invoke the root command.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          }
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Root command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
+        },
+        "inputs": {
+          "$ref": "#/definitions/Inputs",
+          "description": "Typed inputs for the root command: flags, arguments, file values, and variables."
+        },
+        "commands": {
+          "type": "array",
+          "description": "Sub-commands of the root command.",
+          "items": {
+            "$ref": "#/definitions/Command"
+          }
+        },
+        "remote_commands": {
+          "type": "array",
+          "description": "Co-located remote binaries dispatched as first-class sub-commands of the root command.",
+          "items": {
+            "$ref": "#/definitions/RemoteCommandSpec"
+          }
+        },
+        "files": {
+          "type": "array",
+          "description": "Config files to load at startup.",
+          "items": {
+            "$ref": "#/definitions/ConfigSpec"
+          }
+        },
+        "events": {
+          "type": "array",
+          "description": "Events this program can emit. Each name must be unique.",
+          "items": {
+            "$ref": "#/definitions/EventSpec"
+          }
+        },
+        "metadata": {
+          "type": "array",
+          "description": "Build-time metadata vars injected via go ldflags.",
+          "items": {
+            "$ref": "#/definitions/MetadataEntry"
+          }
         }
       }
     },
