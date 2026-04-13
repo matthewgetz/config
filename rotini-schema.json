@@ -431,16 +431,6 @@
         "schema": {
           "$ref": "#/definitions/Schema",
           "description": "When set, generates a typed config struct and validates required fields at load time."
-        },
-        "hot_reload": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, watches the config file for changes and reloads at runtime without restarting the process."
-        },
-        "hot_reload_debounce": {
-          "type": "string",
-          "default": "200ms",
-          "description": "Debounce window for hot-reload file-change events. Uses Go duration format (e.g. '200ms'). Defaults to '200ms' when omitted."
         }
       }
     },
