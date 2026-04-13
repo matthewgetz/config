@@ -168,18 +168,6 @@
               "default": false,
               "description": "When true, the input is hidden from help output (flags only)"
             },
-            "placeholder": {
-              "type": "string",
-              "description": "Custom placeholder shown in help usage lines (flags only)"
-            },
-            "group": {
-              "type": "string",
-              "description": "Group label for help output"
-            },
-            "example": {
-              "type": "string",
-              "description": "Example value shown in help output"
-            },
             "variable": {
               "type": "string",
               "description": "Environment variable name (environment inputs only)",
@@ -247,13 +235,9 @@
           "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
           "description": "Logical name for the flag"
         },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description shown in help output"
-        },
         "schema": {
           "$ref": "#/definitions/InputSchema",
-          "description": "Type definition and input-level metadata (required, deprecated, default, hidden, placeholder, group, example)"
+          "description": "Type definition and input-level metadata (required, deprecated, default, hidden)"
         },
         "identifiers": {
           "type": "array",
@@ -281,13 +265,9 @@
           "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
           "description": "Logical name for the argument"
         },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description shown in help output"
-        },
         "schema": {
           "$ref": "#/definitions/InputSchema",
-          "description": "Type definition and input-level metadata (required, deprecated, default, group, example)"
+          "description": "Type definition and input-level metadata (required, deprecated, default)"
         }
       }
     },
@@ -399,22 +379,6 @@
       }
     },
 
-    "CommandGroup": {
-      "type": "object",
-      "required": ["name"],
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Group label matching the 'group' field on commands"
-        },
-        "description": {
-          "type": "string",
-          "description": "Optional description shown next to the group header in help output"
-        }
-      }
-    },
-
     "ValidationSpec": {
       "type": "object",
       "additionalProperties": false,
@@ -438,10 +402,6 @@
           "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
           "description": "Name of the remote command. The dispatched binary must be named <program>-<name> and located in the same directory as the host binary."
         },
-        "short_description": {
-          "type": "string",
-          "description": "One-line description shown in the host's help output."
-        },
         "aliases": {
           "type": "array",
           "description": "Additional names that invoke this remote command.",
@@ -453,16 +413,12 @@
         "hidden": {
           "type": "boolean",
           "default": false,
-          "description": "When true, the remote command is excluded from help output."
+          "description": "When true, the remote command is excluded from suggestion output."
         },
         "deprecated": {
           "type": "boolean",
           "default": false,
           "description": "When true, marks the remote command as deprecated. Handlers can check .Deprecated to emit their own warnings."
-        },
-        "group": {
-          "type": "string",
-          "description": "Group label matching a groups entry. Controls help output grouping."
         },
         "timeout": {
           "type": "string",
@@ -908,28 +864,7 @@
         "name": {
           "type": "string",
           "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-          "description": "Command name used in routing and help output."
-        },
-        "short_description": {
-          "type": "string",
-          "description": "One-line description shown in parent help output"
-        },
-        "long_description": {
-          "type": "string",
-          "description": "Detailed description shown in per-command help output"
-        },
-        "examples": {
-          "type": "array",
-          "description": "Example usage lines shown in per-command help output",
-          "items": { "type": "string" }
-        },
-        "usage": {
-          "type": "string",
-          "description": "Custom usage string shown instead of the auto-generated usage line"
-        },
-        "group": {
-          "type": "string",
-          "description": "Group label matching a groups entry. Controls help output grouping."
+          "description": "Command name used in routing."
         },
         "aliases": {
           "type": "array",
@@ -987,11 +922,6 @@
       "allOf": [{ "$ref": "#/definitions/CommandBase" }],
       "properties": {
         "name": {},
-        "short_description": {},
-        "long_description": {},
-        "examples": {},
-        "usage": {},
-        "group": {},
         "aliases": {},
         "hidden": {},
         "deprecated": {},
@@ -1011,11 +941,6 @@
       "allOf": [{ "$ref": "#/definitions/CommandBase" }],
       "properties": {
         "name": {},
-        "short_description": {},
-        "long_description": {},
-        "examples": {},
-        "usage": {},
-        "group": {},
         "aliases": {},
         "hidden": {},
         "deprecated": {},
@@ -1029,11 +954,6 @@
           "type": "array",
           "description": "Config files to load at startup.",
           "items": { "$ref": "#/definitions/ConfigSpec" }
-        },
-        "groups": {
-          "type": "array",
-          "description": "Named groups for organising commands in help output.",
-          "items": { "$ref": "#/definitions/CommandGroup" }
         },
         "validation": {
           "$ref": "#/definitions/ValidationSpec",
