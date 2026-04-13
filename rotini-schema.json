@@ -37,11 +37,6 @@
       "$ref": "#/definitions/ValidationSpec",
       "description": "Validation behaviour configuration."
     },
-    "env_prefix": {
-      "type": "string",
-      "pattern": "^[A-Z][A-Z0-9_]*$",
-      "description": "Prefix prepended to all auto-derived environment variable names (e.g. 'MYAPP' → 'MYAPP_FLAG_NAME'). Must be uppercase A-Z/0-9/_ with no trailing underscore."
-    },
     "configuration": {
       "$ref": "#/definitions/Configuration"
     },
@@ -351,14 +346,14 @@
             "$ref": "#/definitions/ArgumentInput"
           }
         },
-        "config_values": {
+        "files": {
           "type": "array",
           "description": "Config file value inputs for this command",
           "items": {
             "$ref": "#/definitions/ConfigInput"
           }
         },
-        "environment": {
+        "variables": {
           "type": "array",
           "description": "Environment variable inputs for this command",
           "items": {
@@ -497,9 +492,9 @@
           "type": "string",
           "description": "Command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
         },
-        "input": {
+        "inputs": {
           "$ref": "#/definitions/Inputs",
-          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables."
+          "description": "Typed inputs for this command: flags, arguments, file values, and variables."
         },
         "commands": {
           "type": "array",
