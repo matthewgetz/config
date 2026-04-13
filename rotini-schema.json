@@ -19,7 +19,7 @@
       "$ref": "#/definitions/Command",
       "description": "The root command definition. Has the same structure as any command node."
     },
-    "configuration_files": {
+    "files": {
       "type": "array",
       "description": "Config files to load at startup.",
       "items": {
@@ -196,25 +196,6 @@
         }
       ]
     },
-    "FlagConstraints": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Declares mutual-exclusion or co-requirement grouping for a flag. All flags that share a group name and constraint type are evaluated together at parse time. A flag may belong to at most one constraint group.",
-      "properties": {
-        "xor": {
-          "type": "string",
-          "description": "Group name. At most one flag in this group may be provided."
-        },
-        "and": {
-          "type": "string",
-          "description": "Group name. All flags in this group must be provided together, or none."
-        },
-        "one_of": {
-          "type": "string",
-          "description": "Group name. Exactly one flag in this group must be provided."
-        }
-      }
-    },
     "OutputSpec": {
       "type": "object",
       "additionalProperties": false,
@@ -258,10 +239,6 @@
             "pattern": "^-{1,2}[a-zA-Z][a-zA-Z0-9_-]*$"
           }
         },
-        "constraints": {
-          "$ref": "#/definitions/FlagConstraints",
-          "description": "Mutual-exclusion or co-requirement group membership for this flag."
-        }
       }
     },
     "ArgumentInput": {
