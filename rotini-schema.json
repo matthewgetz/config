@@ -857,9 +857,11 @@
       }
     },
 
-    "CommandBase": {
+    "Command": {
+      "description": "A command node in the CLI command tree.",
       "type": "object",
-      "description": "Shared command-level properties inherited by both Command (strict) and Definition (extended). JSON Schema Draft 7 does not support additionalProperties: false when using allOf inheritance, so strictness is enforced by Go's DisallowUnknownFields at parse time.",
+      "required": ["name"],
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
@@ -877,12 +879,12 @@
         "hidden": {
           "type": "boolean",
           "default": false,
-          "description": "When true, the command is runnable but omitted from help output — useful for internal or beta commands."
+          "description": "When true, the command is runnable but omitted from suggestion output — useful for internal or beta commands."
         },
         "deprecated": {
           "type": "boolean",
           "default": false,
-          "description": "When true, marks the command as deprecated. The framework surfaces this status in CLIMetadata; handlers decide when and how to emit a warning (Zero runtime opinions)."
+          "description": "When true, marks the command as deprecated. The framework surfaces this status in CLIMetadata; handlers decide when and how to emit a warning."
         },
         "timeout": {
           "type": "string",
@@ -890,7 +892,7 @@
         },
         "input": {
           "$ref": "#/definitions/Inputs",
-          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables"
+          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables."
         },
         "commands": {
           "type": "array",
@@ -899,7 +901,7 @@
         },
         "remote_commands": {
           "type": "array",
-          "description": "Explicit list of co-located remote binaries dispatched as first-class sub-commands of this command.",
+          "description": "Co-located remote binaries dispatched as first-class sub-commands of this command.",
           "items": { "$ref": "#/definitions/RemoteCommandSpec" }
         },
         "events": {
@@ -914,42 +916,62 @@
       }
     },
 
-    "Command": {
-      "description": "A command node in the CLI command tree.",
+    "Definition": {
+      "description": "The root command. Has all command fields plus root-only settings (configuration_files, validation, env_prefix, path_discovery).",
       "type": "object",
       "required": ["name"],
       "additionalProperties": false,
-      "allOf": [{ "$ref": "#/definitions/CommandBase" }],
       "properties": {
-        "name": {},
-        "aliases": {},
-        "hidden": {},
-        "deprecated": {},
-        "timeout": {},
-        "input": {},
-        "commands": {},
-        "remote_commands": {},
-        "events": {},
-        "execution_mode": {}
-      }
-    },
-
-    "Definition": {
-      "description": "The root CLI definition. Extends all command-level fields with root-only settings (configuration files, groups, validation, env_prefix, path_discovery). Note: JSON Schema Draft 7 prevents additionalProperties: false from working correctly with allOf inheritance — strictness is enforced by Go's DisallowUnknownFields at parse time.",
-      "type": "object",
-      "required": ["name"],
-      "allOf": [{ "$ref": "#/definitions/CommandBase" }],
-      "properties": {
-        "name": {},
-        "aliases": {},
-        "hidden": {},
-        "deprecated": {},
-        "timeout": {},
-        "input": {},
-        "commands": {},
-        "remote_commands": {},
-        "events": {},
-        "execution_mode": {},
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Command name used in routing (expected binary name)."
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Additional names that invoke this command.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          }
+        },
+        "hidden": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the command is runnable but omitted from suggestion output."
+        },
+        "deprecated": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, marks the command as deprecated. The framework surfaces this status in CLIMetadata; handlers decide when and how to emit a warning."
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Command execution timeout. Uses Go duration format (e.g. \"10s\", \"1m30s\"). Empty or omitted means no timeout."
+        },
+        "input": {
+          "$ref": "#/definitions/Inputs",
+          "description": "Typed inputs for this command: flags, arguments, configuration file values, and environment variables."
+        },
+        "commands": {
+          "type": "array",
+          "description": "Sub-commands of this command.",
+          "items": { "$ref": "#/definitions/Command" }
+        },
+        "remote_commands": {
+          "type": "array",
+          "description": "Co-located remote binaries dispatched as first-class sub-commands of this command.",
+          "items": { "$ref": "#/definitions/RemoteCommandSpec" }
+        },
+        "events": {
+          "type": "array",
+          "description": "Events this command can emit. Each key must be unique across the entire spec.",
+          "items": { "$ref": "#/definitions/EventSpec" }
+        },
+        "execution_mode": {
+          "$ref": "#/definitions/ExecutionMode",
+          "description": "Configures the runtime execution lifecycle for this command. When omitted, the command runs once and exits."
+        },
         "configuration_files": {
           "type": "array",
           "description": "Config files to load at startup.",
